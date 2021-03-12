@@ -179,10 +179,17 @@ class TestStrategy(bt.Strategy):
 
 
             
+    def buy_and_hold(self):
+        if not self.position:
+            self.log('BUY CREATE, %.2f' % self.dataclose[0])
+            self.order = self.buy()
+            self.buyprice = self.dataclose[0]
+
 
     # region [red]
     def next(self):
-        self.macd_strategy()
+        self.buy_and_hold()
+        # self.macd_strategy()
         # self.rsi_strategy()
     # end region
 
@@ -233,12 +240,18 @@ if __name__ == '__main__':
     sum = 0
     for p in g_profit_list:
         sum += p
-    average_profitable_trade = sum / len(g_profit_list)
+
+    average_profitable_trade = 0
+    if len(g_profit_list) != 0:
+        average_profitable_trade = sum / len(g_profit_list)
 
     sum = 0
     for p in g_loss_list:
         sum += p
-    average_lossing_trade = sum / len(g_loss_list)
+
+    average_lossing_trade = 0
+    if len(g_loss_list) != 0:
+        average_lossing_trade = sum / len(g_loss_list)
 
 
 
@@ -246,10 +259,12 @@ if __name__ == '__main__':
     print()
     print('Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()))
     print("Total Percent gained:        %{:,.2f}".format(round(percent_gained, 1)))
-    print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
 
-    print("Average Profitable Trade: ", average_profitable_trade)
-    print("Average Lossing Trade:    ", average_lossing_trade)
+    print()
+    print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
+    print("Average Profitable Trade:    ${:,.2f}".format(average_profitable_trade))
+    print("Average Lossing Trade:       ${:,.2f}".format(average_lossing_trade))
+
 
     # print()
     # print("Profit list: ")

@@ -132,5 +132,3 @@ if __name__ == '__main__':
 
     # Plot the result
     cerebro.plot()
-
-
