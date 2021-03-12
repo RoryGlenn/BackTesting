@@ -228,9 +228,16 @@ class TestStrategy(bt.Strategy):
                 self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
 
+    def buy_and_hold(self):
+        if not self.position:
+            self.log('BUY CREATE, %.2f' % self.dataclose[0])
+            self.order = self.buy()
+            self.buyprice = self.dataclose[0]
+
     # region [red]
     def next(self):
-        self.ppsr()
+        self.buy_and_hold()
+        # self.ppsr()
         # self.macd_strategy()
         # self.rsi_strategy()
     # end region

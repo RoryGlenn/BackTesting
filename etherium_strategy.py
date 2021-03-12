@@ -167,8 +167,6 @@ class TestStrategy(bt.Strategy):
                 if self.rsi >= 60:
                     self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
-
-                    
         
         # else:
             # value = bought price - current price
@@ -178,13 +176,51 @@ class TestStrategy(bt.Strategy):
                 # we lost money
 
 
+    def buy_and_hold(self):
+        if not self.position:
+            self.log('BUY CREATE, %.2f' % self.dataclose[0])
+            self.order = self.buy()
+            self.buyprice = self.dataclose[0]
             
+
 
     # region [red]
     def next(self):
+        # self.buy_and_hold()
         self.macd_strategy()
         # self.rsi_strategy()
     # end region
+
+
+"""
+Works with .csv file format only.
+This function is accurate with crypto only because crypto runs 7 days a week.
+Stocks run 5 days and this function does not account for that
+"""
+def get_total_backtested_years(filename):
+    second_line = ""
+    last_line   = ""
+    with open(filename, "r") as file:
+        lines = file.readlines()
+        second_line = lines[1].replace("-", "")
+        last_line = lines[-1].replace("-", "")
+
+    time_start_year  = int(second_line[:4])
+    time_start_month = int(second_line[4:6])
+    time_start_day   = int(second_line[6:8])
+
+    time_end_year  = int(last_line[:4])
+    time_end_month = int(last_line[4:6])
+    time_end_day   = int(last_line[6:8])
+
+    time_start = datetime.datetime(time_start_year, time_start_month, time_start_day)
+    time_end   = datetime.datetime(time_end_year, time_end_month, time_end_day)
+
+    days_total = time_end - time_start
+    years_total = days_total.days / 365
+    return round(years_total, 1)
+
+
 
 
 if __name__ == '__main__':
@@ -226,45 +262,37 @@ if __name__ == '__main__':
     # Run over everything
     cerebro.run()
 
-    ten_years                = 10
-    percent_gained           = ( cerebro.broker.getvalue() / starting_cash) * 100
-    average_percent_per_year = percent_gained / ten_years
-
-    sum = 0
-    for p in g_profit_list:
-        sum += p
-    average_profitable_trade = sum / len(g_profit_list)
-
-    sum = 0
-    for p in g_loss_list:
-        sum += p
-    average_lossing_trade = sum / len(g_loss_list)
 
 
+    # ten_years                = 10
+    # percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 100
+    # average_percent_per_year = percent_gained / ten_years
 
-    # Print out the final result
-    print()
-    print('Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()))
-    print("Total Percent gained:        %{:,.2f}".format(round(percent_gained, 1)))
-    print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
-
-    print("Average Profitable Trade: ", average_profitable_trade)
-    print("Average Lossing Trade:    ", average_lossing_trade)
-
-    # print()
-    # print("Profit list: ")
+    # sum = 0
     # for p in g_profit_list:
-    #     print("${:,.2f}".format(round(p, 1)))
+    #     sum += p
+    # average_profitable_trade = sum / len(g_profit_list)
 
-    # print()
-    # print("Loss list:")
+    # sum = 0
     # for p in g_loss_list:
-    #     print("${:,.2f}".format(round(p, 1)))
+    #     sum += p
+    # average_lossing_trade = sum / len(g_loss_list)
 
+
+
+    # # Print out the final result
     # print()
-    # print("Trade per Account Value")
-    # for i in g_trade_per_account_list:
-    #     print(i)
+    # print('Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()))
+    # print("Total Percent gained:        %{:,.2f}".format(round(percent_gained, 1)))
+    # print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
+
+    # print("Average Profitable Trade: ", average_profitable_trade)
+    # print("Average Lossing Trade:    ", average_lossing_trade)
+
+    print("Tested time span")
+    print(get_total_backtested_years("ETH-USD.csv"))
+
+
 
 
     cerebro.plot()
