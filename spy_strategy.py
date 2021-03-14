@@ -157,7 +157,7 @@ class TestStrategy(bt.Strategy):
                     self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
-                    self.price_to_sell = self.buyprice + (self.buyprice * 0.15)
+                    # self.price_to_sell = self.buyprice + (self.buyprice * 0.15)
             else:
                 if current_price >= self.price_to_sell:
                     self.log('SELL CREATE, %.2f' % self.dataclose[0])
@@ -236,8 +236,8 @@ class TestStrategy(bt.Strategy):
 
     # region [red]
     def next(self):
-        self.buy_and_hold()
-        # self.ppsr()
+        # self.buy_and_hold()
+        self.ppsr()
         # self.macd_strategy()
         # self.rsi_strategy()
     # end region

@@ -1,5 +1,11 @@
-# from __future__ import (absolute_import, division, print_function, unicode_literals)
-
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+import argparse
+import backtrader as bt
+import backtrader.feeds as btfeeds
+import backtrader.utils.flushfile
+import datetime
+import backtrader as bt
 import datetime # For datetime objects
 import sys      # To find out the script name (in argv[0])
 import backtrader as bt
@@ -8,11 +14,24 @@ import sys
 import os.path  # To manage paths
 from os import system
 system("cls")
-
+print()
 g_profit_list            = list()
 g_loss_list              = list()
 g_trade_per_account_list = list()
         
+
+class PivotPoints(bt.SignalStrategy):
+    params = (('usepp1', False), ('plot_on_daily', False))
+
+    def log(self, txt, dt=None):
+        ''' Logging function for this strategy'''
+        dt = dt or self.datas[0].datetime.date(0)
+        print('%s, %s' % (dt.isoformat(), txt))    
+
+    def __init__(self):
+        self.pp = bt.ind.PivotPoint(self.data1)
+
+
 
 class TestStrategy(bt.Strategy):
     lines = ('macd', 'signal', 'histo',)
@@ -34,15 +53,19 @@ class TestStrategy(bt.Strategy):
 
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
-        self.dataclose = self.datas[0].close
+
 
         # To keep track of pending orders and buy price/commission
-        self.order    = None
-        self.buyprice = None
-        self.buycomm  = None
+        self.order         = None
+        self.buyprice      = None
+        self.buycomm       = None
         self.price_to_sell = None
         self.biggest_win   = None
         self.biggest_lose  = None
+
+        self.dataclose = self.datas[0].close
+        # self.pp = bt.ind.PivotPoint(self.data1)
+        self.pp = PivotPoints()
 
         # Indicators for the plotting show
         # bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
@@ -109,7 +132,6 @@ class TestStrategy(bt.Strategy):
         trade_per_accountValue = "$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2))
         g_trade_per_account_list.append(trade_per_accountValue)
 
-        
         # we profitted or lost
         # percentage of our profit or loss compared to total cash
         if trade.pnl > 0:
@@ -118,6 +140,34 @@ class TestStrategy(bt.Strategy):
             g_loss_list.append(trade.pnl)
         else:
             pass # should never happen
+
+
+
+
+    # region [blue]
+    def ppsr(self):
+        self.log('Close, %.2f' % self.dataclose[0])
+        current_price = self.dataclose[0]
+
+        # Check if an order is pending ... if yes, we cannot send a 2nd one
+        if not self.order:
+
+            # Check if we are in the market
+            if not self.position:
+
+                if current_price < self.pp.s1:
+                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    self.order = self.buy()
+                    self.buyprice = self.dataclose[0]
+
+                    # sell at least 10% higher than bought price
+                    # self.price_to_sell = self.buyprice + (self.buyprice *ten_percent)
+            else:
+                if current_price > self.pp.r1:
+                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                    self.order = self.sell(
+                        exectype=bt.Order.StopTrail, trailamount=0.02)
+    # end region        
 
 
 
@@ -179,7 +229,8 @@ class TestStrategy(bt.Strategy):
 
     # region [red]
     def next(self):
-        self.buy_and_hold()
+        # self.buy_and_hold()
+        self.ppsr()
         # self.macd_strategy()
         # self.rsi_strategy()
     # end region
@@ -214,12 +265,8 @@ def get_total_backtested_years(filename):
     return round(years_total, 1)
 
 
-
-
 if __name__ == '__main__':
     
-    filename = 'ETH-USD.csv'
-
     # Create a cerebro entity
     cerebro = bt.Cerebro()
 
@@ -228,19 +275,35 @@ if __name__ == '__main__':
 
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
+    filename = 'ETH-USD.csv'
     modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, filename)
 
+    start_year  = 2011
+    start_month = 2
+    start_day   = 14
+
+    end_year  = 2021
+    end_month = 3
+    end_day   = 8
 
     # Create a Data Feed
     data = bt.feeds.YahooFinanceCSVData(
             dataname=datapath,
-            fromdate=datetime.datetime(2011, 2, 14),
-            todate=datetime.datetime(2021, 3, 8),
+            fromdate=datetime.datetime(start_year, start_month, start_day),
+            todate=datetime.datetime(end_year, end_month, end_day),
             reverse=False)
 
-    # Add the Data Feed to Cerebro
+
+    # First add the original data - smaller timeframe
     cerebro.adddata(data)
+
+    # tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks, monthly=bt.TimeFrame.Months)
+
+    # data2 = bt.feeds.BacktraderCSVData(dataname=datapath)
+    
+    # And then the large timeframe
+    # cerebro.adddata(data2)
 
     # Set our desired cash start
     starting_cash = 1000.0
@@ -258,7 +321,7 @@ if __name__ == '__main__':
     # Run over everything
     cerebro.run()
 
-    percent_gained           = (cerebro.broker.getvalue() / starting_cash) 
+    percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 100
     average_percent_per_year = percent_gained / get_total_backtested_years(filename)
 
     # Print out the final result
