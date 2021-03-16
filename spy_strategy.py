@@ -10,39 +10,7 @@ from os import system
 system("cls")
 
 
-class PivotPoint(bt.Indicator):
-    lines = ('p', 's1', 's2', 'r1', 'r2',)
 
-    def __init__(self, datas):
-        # h = self.data.high(-1)  # previous high
-        # l = self.data.low(-1)  # previous low
-        # c = self.data.close(-1)  # previous close
-        h = datas[0].high
-        l = data[0].low
-        c = data[0].close
-
-
-        # self.lines.p = p = (h + l + c) / 3.0
-
-        # p2 = p * 2.0
-        # self.lines.s1 = p2 - h  # (p x 2) - high
-        # self.lines.r1 = p2 - l  # (p x 2) - low
-
-        # hilo = h - l
-        # self.lines.s2 = p - hilo  # p - (high - low)
-        # self.lines.r2 = p + hilo  # p + (high - low)
-
-        ##############################
-        self.p = p = (h + l + c) / 3.0
-
-        p2 = p * 2.0
-        self.s1 = p2 - h  # (p x 2) - high
-        self.r1 = p2 - l  # (p x 2) - low
-
-        hilo = h - l
-        self.s2 = p - hilo  # p - (high - low)
-        self.r2 = p + hilo  # p + (high - low)        
-        ##############################
 
 
 
@@ -76,7 +44,6 @@ class TestStrategy(bt.Strategy):
         self.buycomm  = None
         self.price_to_sell = None
         self.minimize_loss_price = None
-        self.pp = PivotPoint(datas=self.datas)
         
 
 
@@ -140,29 +107,6 @@ class TestStrategy(bt.Strategy):
         self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
                  (trade.pnl, trade.pnlcomm))
 
-
-    # region [blue]
-    def ppsr(self):
-        # Simply log the closing price of the series from the reference
-        self.log('Close, %.2f' % self.dataclose[0])
-
-        current_price = self.dataclose[0]
-
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
-        if not self.order:
-
-            # Check if we are in the market
-            if not self.position:
-                if current_price < self.pp.s1:
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                    self.order    = self.buy()
-                    self.buyprice = self.dataclose[0]
-                    # self.price_to_sell = self.buyprice + (self.buyprice * 0.15)
-            else:
-                if current_price >= self.price_to_sell:
-                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
-                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
-    # end region        
 
 
 
@@ -236,8 +180,7 @@ class TestStrategy(bt.Strategy):
 
     # region [red]
     def next(self):
-        # self.buy_and_hold()
-        self.ppsr()
+        self.buy_and_hold()
         # self.macd_strategy()
         # self.rsi_strategy()
     # end region
@@ -254,7 +197,7 @@ if __name__ == '__main__':
     # because it could have been called from anywhere
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
     # datapath = os.path.join(modpath, 'SPY.csv')
-    datapath = os.path.join(modpath, 'ACRX.csv')
+    datapath = os.path.join(modpath, 'SPY.csv')
 
 
     # Create a Data Feed

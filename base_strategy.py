@@ -13,12 +13,26 @@ import os
 import sys
 import os.path  # To manage paths
 from os import system
+
 system("cls")
 print()
+
 g_profit_list            = list()
 g_loss_list              = list()
 g_trade_per_account_list = list()
         
+
+class Color:
+    HEADER    = '\033[95m'
+    OKBLUE    = '\033[94m'
+    OKCYAN    = '\033[96m'
+    OKGREEN   = '\033[92m'
+    WARNING   = '\033[93m' + '\033[1m'
+    FAIL      = '\033[91m'
+    ENDC      = '\033[0m'
+    BOLD      = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 class PivotPoints(bt.SignalStrategy):
     params = (('usepp1', False), ('plot_on_daily', False))
@@ -64,15 +78,14 @@ class TestStrategy(bt.Strategy):
         self.biggest_lose  = None
 
         self.dataclose = self.datas[0].close
-        # self.pp = bt.ind.PivotPoint(self.data1)
-        self.pp = PivotPoints()
+        # self.pp = PivotPoints()
 
         # Indicators for the plotting show
         # bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
         # bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True
         # bt.indicators.StochasticSlow(self.datas[0])
 
-        self.macd = bt.indicators.MACD(self.data, 
+        self.macd = bt.indicators.MACD(self.data,
                                        period_me1=self.p.macd1,
                                        period_me2=self.p.macd2,
                                        period_signal=self.p.macdsig)
@@ -84,7 +97,6 @@ class TestStrategy(bt.Strategy):
         bt.indicators.ATR(self.datas[0]).plot = False
 
         self.macd_histogram = self.macd.macd - self.macd.signal
-
 
 
     def notify_order(self, order):
@@ -133,13 +145,10 @@ class TestStrategy(bt.Strategy):
         g_trade_per_account_list.append(trade_per_accountValue)
 
         # we profitted or lost
-        # percentage of our profit or loss compared to total cash
         if trade.pnl > 0:
             g_profit_list.append(trade.pnl)
-        elif trade.pnl <= 0:
-            g_loss_list.append(trade.pnl)
         else:
-            pass # should never happen
+            g_loss_list.append(trade.pnl)
 
 
 
@@ -157,7 +166,7 @@ class TestStrategy(bt.Strategy):
 
                 if current_price < self.pp.s1:
                     self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                    self.order = self.buy()
+                    self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
 
                     # sell at least 10% higher than bought price
@@ -165,11 +174,15 @@ class TestStrategy(bt.Strategy):
             else:
                 if current_price > self.pp.r1:
                     self.log('SELL CREATE, %.2f' % self.dataclose[0])
-                    self.order = self.sell(
-                        exectype=bt.Order.StopTrail, trailamount=0.02)
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region        
 
 
+
+    """
+    In our macd strategy, if we could take the slope of the MACD line and 
+    sell when once the slope becomes negative for MRNA, then we would profit much more
+    """
 
     # region [blue]
     def macd_strategy(self):
@@ -180,10 +193,8 @@ class TestStrategy(bt.Strategy):
 
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if not self.order:
-
             # Check if we are in the market
             if not self.position:
-            
                 if self.macd_histogram[0] >= 0.01:
                     self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order    = self.buy()
@@ -191,7 +202,6 @@ class TestStrategy(bt.Strategy):
 
                     # sell at least 10% higher than bought price
                     self.price_to_sell = self.buyprice + (self.buyprice *ten_percent)
-            
             else:
                 if self.macd_histogram[0] < ten_percent or current_price >= self.price_to_sell:
                     self.log('SELL CREATE, %.2f' % self.dataclose[0])
@@ -199,40 +209,73 @@ class TestStrategy(bt.Strategy):
     # end region
 
 
+    # region [blue]
     def rsi_strategy(self):
         # Simply log the closing price of the series from the reference
         self.log('Close, %.2f' % self.dataclose[0])
 
         current_price = self.dataclose[0]
 
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
         if not self.order:
-            # Check if we are in the market
             if not self.position:
-                if self.rsi <= 35:
+                if self.rsi <= 51:
                     self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.10)
             else:
-                if self.rsi >= 60:
+                if self.rsi >= 70 and current_price >= self.price_to_sell:
                     self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
-        
+    # end region
 
+
+    """
+    Keep track of sell price when you put a stop loss in
+    If the price dipped by 2% which triggered the sell, but then the price rose immediately after the sell, buy again immediately
+
+    """
+
+    # region [blue]
+    def hybrid_strategy(self):
+        # Simply log the closing price of the series from the reference
+        self.log('Close, %.2f' % self.dataclose[0])
+
+        current_price = self.dataclose[0]
+
+        print("self.macd_histogram[0]:", self.macd_histogram[0])
+
+        if not self.order:
+            if not self.position:
+                if self.rsi <= 51:
+                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+                    self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
+            else:
+                if self.macd_histogram[0] >= 4: #and current_price >= self.price_to_sell:
+                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+    # end region
+
+
+
+    # region [blue]
     def buy_and_hold(self):
         if not self.position:
             self.log('BUY CREATE, %.2f' % self.dataclose[0])
             self.order = self.buy()
             self.buyprice = self.dataclose[0]
-            
+    # end region
+
 
     # region [red]
     def next(self):
         # self.buy_and_hold()
-        self.ppsr()
         # self.macd_strategy()
         # self.rsi_strategy()
+        # self.ppsr()
+        self.hybrid_strategy()
     # end region
 
 
@@ -275,7 +318,8 @@ if __name__ == '__main__':
 
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
-    filename = 'ETH-USD.csv'
+    filename = 'MRNA.csv'
+    
     modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, filename)
 
@@ -299,9 +343,8 @@ if __name__ == '__main__':
     cerebro.adddata(data)
 
     # tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks, monthly=bt.TimeFrame.Months)
-
     # data2 = bt.feeds.BacktraderCSVData(dataname=datapath)
-    
+
     # And then the large timeframe
     # cerebro.adddata(data2)
 
@@ -327,8 +370,8 @@ if __name__ == '__main__':
     # Print out the final result
     print()
     print('Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()))
-    print("Total Percent gained:        %{:,.2f}".format(round(percent_gained, 1)))
+    print(Color.OKGREEN + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
     print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
-    print("Time span " + str(get_total_backtested_years(filename)) + " years")
+    print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
 
     cerebro.plot()
