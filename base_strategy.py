@@ -13,6 +13,7 @@ import os
 import sys
 import os.path  # To manage paths
 from os import system
+import pandas as pd
 
 system("cls")
 print()
@@ -27,23 +28,92 @@ class Color:
     OKBLUE    = '\033[94m'
     OKCYAN    = '\033[96m'
     OKGREEN   = '\033[92m'
-    WARNING   = '\033[93m' + '\033[1m'
+    WARNING   = '\033[93m'
     FAIL      = '\033[91m'
     ENDC      = '\033[0m'
     BOLD      = '\033[1m'
     UNDERLINE = '\033[4m'
 
 
-class PivotPoints(bt.SignalStrategy):
-    params = (('usepp1', False), ('plot_on_daily', False))
+class PivotPoints():
+    # params = (('usepp1', False), ('plot_on_daily', False))
 
-    def log(self, txt, dt=None):
-        ''' Logging function for this strategy'''
-        dt = dt or self.datas[0].datetime.date(0)
-        print('%s, %s' % (dt.isoformat(), txt))    
+    # def log(self, txt, dt=None):
+    #     ''' Logging function for this strategy'''
+    #     dt = dt or self.datas[0].datetime.date(0)
+    #     print('%s, %s' % (dt.isoformat(), txt))    
 
-    def __init__(self):
-        self.pp = bt.ind.PivotPoint(self.data1)
+    def __init__(self, data):
+        self.closes = data.close
+        self.opens = data.open
+        self.highs = data.high
+        self.lows = data.low
+        # self.dates = data.datetime.date(-2369)
+
+
+        date_list  = list()
+        open_list  = list()
+        high_list  = list()
+        close_list = list()
+        low_list   = list()
+
+        for i in range(-2369, 0):
+            date_list.append(str(data.datetime.date(i)))
+
+        # even though there are 2377 entries in the excel, it will only print up to 2371 and will not read the very last entry
+        # we also start with 1 and not 0, i know, its weird...
+        for i in range(1, 2370):
+            close_list.append(self.closes[i])
+            open_list.append(self.opens[i])
+            high_list.append(self.highs[i])
+            low_list.append(self.lows[i])
+
+        dohlc_dict = { 'Date': date_list, 'Open': open_list, 'High': high_list, 'Low': low_list, 'Close': close_list }
+        
+
+        self.s2 = list()
+        self.s1 = list()
+        self.pp = list()
+        self.r1 = list()
+        self.r2 = list()
+        date_list = list()
+
+        for i in range(0, len(dohlc_dict['High'])-1):
+
+            """
+            self.p = p = (h + l + c) / 3.0
+
+            p2 = p * 2.0
+            self.s1 = p2 - h  # (p x 2) - high
+            self.r1 = p2 - l  # (p x 2) - low
+
+            hilo = h - l
+            self.s2 = p - hilo  # p - (high - low)
+            self.r2 = p + hilo  # p + (high - low)
+            """
+
+            date_list.append(dohlc_dict['Date'][i+1])
+            p = (dohlc_dict['High'][i] + dohlc_dict['Low'][i] + dohlc_dict['Close'][i]) / 3.0
+            self.pp.append(p)
+
+            p2 = p * 2.0
+            self.s1.append(p2 - dohlc_dict['High'][i])
+            self.r1.append(p2 - dohlc_dict['Low'][i])
+
+            hilo = dohlc_dict['High'][i] - dohlc_dict['Low'][i]
+            
+            self.s2.append(p - hilo)
+            self.r2.append(p + hilo)
+
+
+        self.ppsr_df = pd.DataFrame({'Date':date_list, 's2':self.s2, 's1':self.s1, 'pp':self.pp, 'r1':self.r1, 'r2':self.r2 })
+        print(self.ppsr_df)
+
+        # for k, v in self.pp.items():
+        #     print(k, v)
+
+        
+
 
 
 
@@ -78,7 +148,15 @@ class TestStrategy(bt.Strategy):
         self.biggest_lose  = None
 
         self.dataclose = self.datas[0].close
-        # self.pp = PivotPoints()
+        # print(self.datas[0].close[-1]) # third to the last entry
+        # print(self.datas[0].close[0])  # second to the last
+        # print(self.datas[0].close[1])  # gets the first data entry
+        
+
+        data = self.datas[0]
+        self.pp = PivotPoints(data)
+
+        exit()
 
         # Indicators for the plotting show
         # bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
@@ -108,24 +186,24 @@ class TestStrategy(bt.Strategy):
         # Attention: broker could reject order if not enough cash
         if order.status in [order.Completed]:
             if order.isbuy():
-                self.log(
-                        'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                        (order.executed.price,
-                        order.executed.value,
-                        order.executed.comm))
+                # self.log(
+                #         'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                #         (order.executed.price,
+                #         order.executed.value,
+                #         order.executed.comm))
 
                 self.buyprice = order.executed.price
                 self.buycomm = order.executed.comm
-            else:  # Sell
-                self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                         (order.executed.price,
-                          order.executed.value,
-                          order.executed.comm))
+            # else:  # Sell
+                # self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                #          (order.executed.price,
+                #           order.executed.value,
+                #           order.executed.comm))
 
             self.bar_executed = len(self)
 
-        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
-            self.log('Order Canceled/Margin/Rejected')
+        # elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+        #     self.log('Order Canceled/Margin/Rejected')
 
         # Write down: no pending order
         self.order = None
@@ -139,7 +217,7 @@ class TestStrategy(bt.Strategy):
         if not trade.isclosed:
             return
 
-        self.log( 'OPERATION PROFIT, GROSS %.2f, NET %.2f' % (trade.pnl, trade.pnlcomm) )
+        # self.log( 'OPERATION PROFIT, GROSS %.2f, NET %.2f' % (trade.pnl, trade.pnlcomm) )
 
         trade_per_accountValue = "$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2))
         g_trade_per_account_list.append(trade_per_accountValue)
@@ -186,7 +264,7 @@ class TestStrategy(bt.Strategy):
 
     # region [blue]
     def macd_strategy(self):
-        self.log('Close, %.2f' % self.dataclose[0])
+        # self.log('Close, %.2f' % self.dataclose[0])
 
         current_price = self.dataclose[0]
         ten_percent   = 0.10
@@ -196,7 +274,7 @@ class TestStrategy(bt.Strategy):
             # Check if we are in the market
             if not self.position:
                 if self.macd_histogram[0] >= 0.01:
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    # self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
 
@@ -204,7 +282,7 @@ class TestStrategy(bt.Strategy):
                     self.price_to_sell = self.buyprice + (self.buyprice *ten_percent)
             else:
                 if self.macd_histogram[0] < ten_percent or current_price >= self.price_to_sell:
-                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                    # self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -212,20 +290,20 @@ class TestStrategy(bt.Strategy):
     # region [blue]
     def rsi_strategy(self):
         # Simply log the closing price of the series from the reference
-        self.log('Close, %.2f' % self.dataclose[0])
+        # self.log('Close, %.2f' % self.dataclose[0])
 
         current_price = self.dataclose[0]
 
         if not self.order:
             if not self.position:
                 if self.rsi <= 51:
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                    # self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.10)
             else:
                 if self.rsi >= 70 and current_price >= self.price_to_sell:
-                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                    # self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -271,11 +349,11 @@ class TestStrategy(bt.Strategy):
 
     # region [red]
     def next(self):
-        # self.buy_and_hold()
+        self.buy_and_hold()
         # self.macd_strategy()
         # self.rsi_strategy()
         # self.ppsr()
-        self.hybrid_strategy()
+        # self.hybrid_strategy()
     # end region
 
 
@@ -318,7 +396,7 @@ if __name__ == '__main__':
 
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
-    filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\MRNA.csv'
+    filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\BTC-USD.csv'
     
     modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, filename)
@@ -329,7 +407,7 @@ if __name__ == '__main__':
 
     end_year  = 2021
     end_month = 3
-    end_day   = 8
+    end_day   = 19
 
     # Create a Data Feed
     data = bt.feeds.YahooFinanceCSVData(
@@ -338,15 +416,8 @@ if __name__ == '__main__':
             todate=datetime.datetime(end_year, end_month, end_day),
             reverse=False)
 
-
     # First add the original data - smaller timeframe
     cerebro.adddata(data)
-
-    # tframes = dict(daily=bt.TimeFrame.Days, weekly=bt.TimeFrame.Weeks, monthly=bt.TimeFrame.Months)
-    # data2 = bt.feeds.BacktraderCSVData(dataname=datapath)
-
-    # And then the large timeframe
-    # cerebro.adddata(data2)
 
     # Set our desired cash start
     starting_cash = 1000.0
@@ -358,9 +429,6 @@ if __name__ == '__main__':
     # Set the commission
     cerebro.broker.setcommission(commission=0.0)
 
-    # Print out the starting conditions
-    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-
     # Run over everything
     cerebro.run()
 
@@ -369,9 +437,19 @@ if __name__ == '__main__':
 
     # Print out the final result
     print()
-    print('Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()))
-    print(Color.OKGREEN + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
+    print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
+    print(Color.WARNING + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
+    print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
     print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
     print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
 
-    cerebro.plot()
+    # cerebro.plot()
+
+
+
+
+# Starting Portfolio Value:    $1,000.00
+# Final Portfolio Value:       $133,752.44
+# Total Percent gained:        %13,375.24
+# Average Percent Per Year:    %2,057.73
+# Total Backtested Years:      6.5
