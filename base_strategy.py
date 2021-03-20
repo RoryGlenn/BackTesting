@@ -48,8 +48,8 @@ class PivotPoints():
         self.opens = data.open
         self.highs = data.high
         self.lows = data.low
+        self.warmup = False
         # self.dates = data.datetime.date(-2369)
-
 
         date_list  = list()
         open_list  = list()
@@ -69,7 +69,6 @@ class PivotPoints():
             low_list.append(self.lows[i])
 
         dohlc_dict = { 'Date': date_list, 'Open': open_list, 'High': high_list, 'Low': low_list, 'Close': close_list }
-        
 
         self.s2 = list()
         self.s1 = list()
@@ -104,7 +103,6 @@ class PivotPoints():
             
             self.s2.append(p - hilo)
             self.r2.append(p + hilo)
-
 
         self.ppsr_df = pd.DataFrame({'Date':date_list, 's2':self.s2, 's1':self.s1, 'pp':self.pp, 'r1':self.r1, 'r2':self.r2 })
         print(self.ppsr_df)
@@ -154,9 +152,9 @@ class TestStrategy(bt.Strategy):
         
 
         data = self.datas[0]
-        self.pp = PivotPoints(data)
-
-        exit()
+        self.PivotPoints = PivotPoints(data)
+        self.pp_counter = 0
+        
 
         # Indicators for the plotting show
         # bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
@@ -233,26 +231,41 @@ class TestStrategy(bt.Strategy):
 
     # region [blue]
     def ppsr(self):
-        self.log('Close, %.2f' % self.dataclose[0])
+        # self.log('Close, %.2f' % self.dataclose[0])
+        
         current_price = self.dataclose[0]
 
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
-        if not self.order:
+        print("current_price: ", current_price)
+        print("Date: ", self.PivotPoints.ppsr_df['Date'][self.pp_counter])
+        print("s1: ", self.PivotPoints.ppsr_df['s1'][self.pp_counter])
+        print("r1: ", self.PivotPoints.ppsr_df['r1'][self.pp_counter])
 
-            # Check if we are in the market
-            if not self.position:
+        if self.PivotPoints.warmup:
 
-                if current_price < self.pp.s1:
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
-                    self.order    = self.buy()
-                    self.buyprice = self.dataclose[0]
+            # Check if an order is pending ... if yes, we cannot send a 2nd one
+            if not self.order:
 
-                    # sell at least 10% higher than bought price
-                    # self.price_to_sell = self.buyprice + (self.buyprice *ten_percent)
-            else:
-                if current_price > self.pp.r1:
-                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
-                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+                # Check if we are in the market
+                if not self.position:
+
+
+
+                    # if current_price < self.pp.s1:
+                    if current_price < self.PivotPoints.ppsr_df['s1'][self.pp_counter]:
+                        self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                        self.order    = self.buy()
+                        self.buyprice = self.dataclose[0]
+
+                        # sell at least 10% higher than bought price
+                        # self.price_to_sell = self.buyprice + (self.buyprice *ten_percent)
+                else:
+                    # if current_price > self.pp.r1:
+                    if current_price > self.PivotPoints.ppsr_df['r1'][self.pp_counter]:
+                        self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                        self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+        
+            self.pp_counter += 1
+        self.PivotPoints.warmup = True
     # end region        
 
 
@@ -349,10 +362,10 @@ class TestStrategy(bt.Strategy):
 
     # region [red]
     def next(self):
-        self.buy_and_hold()
+        # self.buy_and_hold()
         # self.macd_strategy()
         # self.rsi_strategy()
-        # self.ppsr()
+        self.ppsr()
         # self.hybrid_strategy()
     # end region
 
@@ -432,15 +445,22 @@ if __name__ == '__main__':
     # Run over everything
     cerebro.run()
 
-    percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 100
+
+    percent_gained           = (cerebro.broker.getvalue() / starting_cash)
     average_percent_per_year = percent_gained / get_total_backtested_years(filename)
 
     # Print out the final result
     print()
     print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
     print(Color.WARNING + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
-    print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
-    print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
+
+    if cerebro.broker.getvalue() < starting_cash:
+        print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %-{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
+        print("Average Percent Per Year:    %-{:,.2f}".format(average_percent_per_year))
+    else:
+        print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
+        print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
+    
     print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
 
     # cerebro.plot()
