@@ -78,19 +78,6 @@ class PivotPoints():
         date_list = list()
 
         for i in range(0, len(dohlc_dict['High'])-1):
-
-            """
-            self.p = p = (h + l + c) / 3.0
-
-            p2 = p * 2.0
-            self.s1 = p2 - h  # (p x 2) - high
-            self.r1 = p2 - l  # (p x 2) - low
-
-            hilo = h - l
-            self.s2 = p - hilo  # p - (high - low)
-            self.r2 = p + hilo  # p + (high - low)
-            """
-
             date_list.append(dohlc_dict['Date'][i+1])
             p = (dohlc_dict['High'][i] + dohlc_dict['Low'][i] + dohlc_dict['Close'][i]) / 3.0
             self.pp.append(p)
@@ -107,8 +94,6 @@ class PivotPoints():
         self.ppsr_df = pd.DataFrame({'Date':date_list, 's2':self.s2, 's1':self.s1, 'pp':self.pp, 'r1':self.r1, 'r2':self.r2 })
         print(self.ppsr_df)
 
-        # for k, v in self.pp.items():
-        #     print(k, v)
 
         
 
@@ -144,6 +129,8 @@ class TestStrategy(bt.Strategy):
         self.price_to_sell = None
         self.biggest_win   = None
         self.biggest_lose  = None
+        self.total_buys    = 0
+        self.total_sells   = 0
 
         self.dataclose = self.datas[0].close
         # print(self.datas[0].close[-1]) # third to the last entry
@@ -228,7 +215,6 @@ class TestStrategy(bt.Strategy):
 
 
 
-
     # region [blue]
     def ppsr(self):
         # self.log('Close, %.2f' % self.dataclose[0])
@@ -239,6 +225,10 @@ class TestStrategy(bt.Strategy):
         print("Date: ", self.PivotPoints.ppsr_df['Date'][self.pp_counter])
         print("s1: ", self.PivotPoints.ppsr_df['s1'][self.pp_counter])
         print("r1: ", self.PivotPoints.ppsr_df['r1'][self.pp_counter])
+        
+        print("total buys: ", self.total_buys)
+        print("total sells", self.total_sells)
+        print()
 
         if self.PivotPoints.warmup:
 
@@ -248,21 +238,19 @@ class TestStrategy(bt.Strategy):
                 # Check if we are in the market
                 if not self.position:
 
-
-
-                    # if current_price < self.pp.s1:
-                    if current_price < self.PivotPoints.ppsr_df['s1'][self.pp_counter]:
+                    if current_price < self.PivotPoints.ppsr_df['s2'][self.pp_counter]:
                         self.log('BUY CREATE, %.2f' % self.dataclose[0])
                         self.order    = self.buy()
                         self.buyprice = self.dataclose[0]
+                        self.total_buys += 1
 
                         # sell at least 10% higher than bought price
-                        # self.price_to_sell = self.buyprice + (self.buyprice *ten_percent)
+                        self.price_to_sell = self.buyprice + (self.buyprice * 0.01)
                 else:
-                    # if current_price > self.pp.r1:
-                    if current_price > self.PivotPoints.ppsr_df['r1'][self.pp_counter]:
+                    if current_price > self.PivotPoints.ppsr_df['r2'][self.pp_counter] and current_price > self.price_to_sell:
                         self.log('SELL CREATE, %.2f' % self.dataclose[0])
                         self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+                        self.total_sells += 1
         
             self.pp_counter += 1
         self.PivotPoints.warmup = True
@@ -292,12 +280,14 @@ class TestStrategy(bt.Strategy):
                     self.buyprice = self.dataclose[0]
 
                     # sell at least 10% higher than bought price
-                    self.price_to_sell = self.buyprice + (self.buyprice *ten_percent)
+                    self.price_to_sell = self.buyprice + (self.buyprice * ten_percent)
             else:
                 if self.macd_histogram[0] < ten_percent or current_price >= self.price_to_sell:
                     # self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
+
+
 
 
     # region [blue]
@@ -309,16 +299,19 @@ class TestStrategy(bt.Strategy):
 
         if not self.order:
             if not self.position:
-                if self.rsi <= 51:
+                if self.rsi <= 35:
                     # self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
-                    self.price_to_sell = self.buyprice + (self.buyprice * 0.10)
+                    self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
             else:
-                if self.rsi >= 70 and current_price >= self.price_to_sell:
+                if self.rsi >= 65 and current_price >= self.price_to_sell:
                     # self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
+
+
+
 
 
     """
@@ -363,9 +356,9 @@ class TestStrategy(bt.Strategy):
     # region [red]
     def next(self):
         # self.buy_and_hold()
-        # self.macd_strategy()
+        self.macd_strategy()
         # self.rsi_strategy()
-        self.ppsr()
+        # self.ppsr()
         # self.hybrid_strategy()
     # end region
 
@@ -445,8 +438,7 @@ if __name__ == '__main__':
     # Run over everything
     cerebro.run()
 
-
-    percent_gained           = (cerebro.broker.getvalue() / starting_cash)
+    percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 10
     average_percent_per_year = percent_gained / get_total_backtested_years(filename)
 
     # Print out the final result
@@ -460,12 +452,10 @@ if __name__ == '__main__':
     else:
         print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
         print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
-    
     print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
 
-    # cerebro.plot()
 
-
+    cerebro.plot()
 
 
 # Starting Portfolio Value:    $1,000.00
