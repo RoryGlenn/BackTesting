@@ -92,10 +92,6 @@ class PivotPoints():
             self.r2.append(p + hilo)
 
         self.ppsr_df = pd.DataFrame({'Date':date_list, 's2':self.s2, 's1':self.s1, 'pp':self.pp, 'r1':self.r1, 'r2':self.r2 })
-        print(self.ppsr_df)
-
-
-        
 
 
 
@@ -144,9 +140,11 @@ class TestStrategy(bt.Strategy):
         
 
         # Indicators for the plotting show
-        # bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
-        # bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True
-        # bt.indicators.StochasticSlow(self.datas[0])
+        self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
+        bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True # Blue
+        self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
+
+        self.stochastic_slow = bt.indicators.StochasticSlow(self.datas[0])
 
         self.macd = bt.indicators.MACD(self.data,
                                        period_me1=self.p.macd1,
@@ -239,7 +237,6 @@ class TestStrategy(bt.Strategy):
                 if not self.position:
 
                     if current_price < self.PivotPoints.ppsr_df['s2'][self.pp_counter]:
-                        self.log('BUY CREATE, %.2f' % self.dataclose[0])
                         self.order    = self.buy()
                         self.buyprice = self.dataclose[0]
                         self.total_buys += 1
@@ -248,7 +245,6 @@ class TestStrategy(bt.Strategy):
                         self.price_to_sell = self.buyprice + (self.buyprice * 0.01)
                 else:
                     if current_price > self.PivotPoints.ppsr_df['r2'][self.pp_counter] and current_price > self.price_to_sell:
-                        self.log('SELL CREATE, %.2f' % self.dataclose[0])
                         self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
                         self.total_sells += 1
         
@@ -265,7 +261,6 @@ class TestStrategy(bt.Strategy):
 
     # region [blue]
     def macd_strategy(self):
-        # self.log('Close, %.2f' % self.dataclose[0])
 
         current_price = self.dataclose[0]
         ten_percent   = 0.10
@@ -275,7 +270,6 @@ class TestStrategy(bt.Strategy):
             # Check if we are in the market
             if not self.position:
                 if self.macd_histogram[0] >= 0.01:
-                    # self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
 
@@ -283,7 +277,6 @@ class TestStrategy(bt.Strategy):
                     self.price_to_sell = self.buyprice + (self.buyprice * ten_percent)
             else:
                 if self.macd_histogram[0] < ten_percent or current_price >= self.price_to_sell:
-                    # self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -293,20 +286,17 @@ class TestStrategy(bt.Strategy):
     # region [blue]
     def rsi_strategy(self):
         # Simply log the closing price of the series from the reference
-        # self.log('Close, %.2f' % self.dataclose[0])
 
         current_price = self.dataclose[0]
 
         if not self.order:
             if not self.position:
                 if self.rsi <= 35:
-                    # self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
             else:
                 if self.rsi >= 65 and current_price >= self.price_to_sell:
-                    # self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -323,22 +313,16 @@ class TestStrategy(bt.Strategy):
     # region [blue]
     def hybrid_strategy(self):
         # Simply log the closing price of the series from the reference
-        self.log('Close, %.2f' % self.dataclose[0])
-
         current_price = self.dataclose[0]
-
-        print("self.macd_histogram[0]:", self.macd_histogram[0])
 
         if not self.order:
             if not self.position:
                 if self.rsi <= 51:
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
             else:
                 if self.macd_histogram[0] >= 4: #and current_price >= self.price_to_sell:
-                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -347,19 +331,43 @@ class TestStrategy(bt.Strategy):
     # region [blue]
     def buy_and_hold(self):
         if not self.position:
-            self.log('BUY CREATE, %.2f' % self.dataclose[0])
             self.order = self.buy()
             self.buyprice = self.dataclose[0]
     # end region
 
 
+
+    # region [blue]
+    def moving_averages(self):
+        # self.ema_red_line  # Red
+        # self.wma_blue_line # Blue
+
+        print("blue line", self.wma_blue_line[0])
+        print("red line",  self.ema_red_line[0])
+
+        current_price = self.dataclose[0]
+
+        if not self.order:
+            if not self.position:
+                if self.wma_blue_line[0] > self.ema_red_line[0]:
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+                    self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
+            else:
+                if self.wma_blue_line[0] < self.ema_red_line[0]:
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
+    # end region
+
+
+
     # region [red]
     def next(self):
         # self.buy_and_hold()
-        self.macd_strategy()
+        # self.macd_strategy()
         # self.rsi_strategy()
         # self.ppsr()
         # self.hybrid_strategy()
+        self.moving_averages()
     # end region
 
 

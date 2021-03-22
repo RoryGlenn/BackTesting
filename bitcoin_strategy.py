@@ -112,6 +112,7 @@ class TestStrategy(bt.Strategy):
         self.biggest_lose  = None
         self.total_buys    = 0
         self.total_sells   = 0
+        self.prev_macd = 0
 
         self.dataclose = self.datas[0].close
         # print(self.datas[0].close[-1]) # third to the last entry
@@ -252,15 +253,17 @@ class TestStrategy(bt.Strategy):
         if not self.order:
             # Check if we are in the market
             if not self.position:
-                if self.macd_histogram[0] >= 0.1:
+                if self.macd_histogram[0] >= 0.10:
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
-                    self.price_to_sell = self.buyprice + (self.buyprice * 0.001)
+                    self.price_to_sell = self.buyprice + (self.buyprice * 0.01)
             else:
-                if self.macd_histogram[0] < 0.10: #and current_price >= self.price_to_sell: #and potential_profit > trade_fee:
+                if self.macd_histogram[0] < 0.10:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
-                # elif current_price - (self.buyprice * 0.01) < self.buyprice:
-                    # self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+        
+        # self.prev_macd = self.macd.macd[0]
+
+        
     # end region
 
 
@@ -397,7 +400,11 @@ if __name__ == '__main__':
     cerebro.addsizer(bt.sizers.AllInSizer)
 
     # Set the commission
-    cerebro.broker.setcommission(commission=0)
+    # cerebro.broker.setcommission(commission=0)
+    binance_trade_fee = 0.00075
+    relative_trade_fee = cerebro.broker.getvalue() * binance_trade_fee
+    cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)
+
 
     # Run over everything
     cerebro.run()
