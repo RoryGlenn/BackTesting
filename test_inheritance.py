@@ -1,3 +1,11 @@
+"""
+test_inheritance.py 
+
+This file serves as an example for how to inherit from base_strategy.
+
+"""
+
+
 from base_strategy import BaseStrategies, PivotPoints, get_total_backtested_years, run_backtesting
 from color         import Color
 from os            import system
@@ -68,9 +76,6 @@ def run_backtesting(filename):
     # Add a FixedSize sizer according to the stake
     cerebro.addsizer(bt.sizers.AllInSizer)
 
-    # Set the commission
-    # cerebro.broker.setcommission(commission=0.0)
-
     binance_trade_fee = 0.00075
     relative_trade_fee = cerebro.broker.getvalue() * binance_trade_fee
     cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
@@ -78,22 +83,12 @@ def run_backtesting(filename):
     # Run over everything
     cerebro.run()
 
-    percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 10
-    average_percent_per_year = percent_gained / get_total_backtested_years(filename)
-
     # Print out the final result
     print()
     print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
     print(Color.WARNING + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
 
-    if cerebro.broker.getvalue() < starting_cash:
-        print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %-{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
-        print("Average Percent Per Year:    %-{:,.2f}".format(average_percent_per_year))
-    else:
-        print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
-        print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
-    print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
-
+    # plot the results
     cerebro.plot()    
 
 
