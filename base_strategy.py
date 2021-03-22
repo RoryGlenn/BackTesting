@@ -16,17 +16,6 @@ g_loss_list              = list()
 g_trade_per_account_list = list()
         
 
-# class Color:
-#     HEADER    = '\033[95m'
-#     OKBLUE    = '\033[94m'
-#     OKCYAN    = '\033[96m'
-#     OKGREEN   = '\033[92m'
-#     WARNING   = '\033[93m'
-#     FAIL      = '\033[91m'
-#     ENDC      = '\033[0m'
-#     BOLD      = '\033[1m'
-#     UNDERLINE = '\033[4m'
-
 
 class PivotPoints():
 
@@ -244,12 +233,12 @@ class BaseStrategies(bt.Strategy):
         if not self.order:
             # Check if we are in the market
             if not self.position:
-                if self.macd_histogram[0] >= 0.10:
+                if self.macd_histogram[0] >= 0:
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.01)
             else:
-                if self.macd_histogram[0] < 0.10:
+                if self.macd_histogram[0] < 0:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
         
         # self.prev_macd = self.macd.macd[0]
