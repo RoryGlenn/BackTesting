@@ -116,9 +116,9 @@ class BaseStrategies(bt.Strategy):
         # self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
         # self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
 
-        self.ema_long = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
+        
+        self.ema_long  = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
         self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12) 
-
 
         self.stochastic_slow = bt.indicators.StochasticSlow(self.datas[0])
 
@@ -178,8 +178,8 @@ class BaseStrategies(bt.Strategy):
 
         # self.log( 'OPERATION PROFIT, GROSS %.2f, NET %.2f' % (trade.pnl, trade.pnlcomm) )
 
-        trade_per_accountValue = "$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2))
-        g_trade_per_account_list.append(trade_per_accountValue)
+        # trade_per_accountValue = "$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2))
+        # g_trade_per_account_list.append(trade_per_accountValue)
 
         # we profitted or lost
         if trade.pnl > 0:
@@ -448,21 +448,21 @@ def run_backtesting(filename):
     # Run over everything
     cerebro.run()
 
-    percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 10
-    average_percent_per_year = percent_gained / get_total_backtested_years(filename)
+    # percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 10
+    # average_percent_per_year = percent_gained / get_total_backtested_years(filename)
 
     # Print out the final result
     print()
     print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
     print(Color.WARNING + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
 
-    if cerebro.broker.getvalue() < starting_cash:
-        print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %-{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
-        print("Average Percent Per Year:    %-{:,.2f}".format(average_percent_per_year))
-    else:
-        print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
-        print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
-    print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
+    # if cerebro.broker.getvalue() < starting_cash:
+    #     print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %-{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
+    #     print("Average Percent Per Year:    %-{:,.2f}".format(average_percent_per_year))
+    # else:
+    #     print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
+    #     print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
+    # print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
 
     cerebro.plot()    
 
