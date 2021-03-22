@@ -1,18 +1,11 @@
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
-import argparse
-import backtrader as bt
-import backtrader.feeds as btfeeds
-import backtrader.utils.flushfile
-import datetime
-import backtrader as bt
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 import datetime # For datetime objects
 import sys      # To find out the script name (in argv[0])
 import backtrader as bt
 import os
-import sys
 import os.path  # To manage paths
 from os import system
+from color import Color
 import pandas as pd
 
 system("cls")
@@ -23,16 +16,16 @@ g_loss_list              = list()
 g_trade_per_account_list = list()
         
 
-class Color:
-    HEADER    = '\033[95m'
-    OKBLUE    = '\033[94m'
-    OKCYAN    = '\033[96m'
-    OKGREEN   = '\033[92m'
-    WARNING   = '\033[93m'
-    FAIL      = '\033[91m'
-    ENDC      = '\033[0m'
-    BOLD      = '\033[1m'
-    UNDERLINE = '\033[4m'
+# class Color:
+#     HEADER    = '\033[95m'
+#     OKBLUE    = '\033[94m'
+#     OKCYAN    = '\033[96m'
+#     OKGREEN   = '\033[92m'
+#     WARNING   = '\033[93m'
+#     FAIL      = '\033[91m'
+#     ENDC      = '\033[0m'
+#     BOLD      = '\033[1m'
+#     UNDERLINE = '\033[4m'
 
 
 class PivotPoints():
@@ -89,7 +82,7 @@ class PivotPoints():
 
 
 
-class TestStrategy(bt.Strategy):
+class BaseStrategies(bt.Strategy):
     lines = ('macd', 'signal', 'histo',)
     params = (
         # Standard MACD Parameters
@@ -113,7 +106,7 @@ class TestStrategy(bt.Strategy):
 
         # To keep track of pending orders and buy price/commission
         self.order         = None
-        self.buyprice      = None
+        self.buyprice      = 0
         self.buycomm       = None
         self.price_to_sell = None
         self.total_buys    = 0
@@ -125,16 +118,14 @@ class TestStrategy(bt.Strategy):
         # print(self.datas[0].close[1])  # gets the first data entry
         
 
-        data = self.datas[0]
-        self.PivotPoints = PivotPoints(data)
-        self.pp_counter = 0
+        # data = self.datas[0]
+        # self.PivotPoints = PivotPoints(data)
+        # self.pp_counter = 0
         
 
         # Indicators for the plotting show
-        self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
-        bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True         # Blue
-        self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
-
+        # self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
+        # self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
 
         self.ema_long = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
         self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12) 
@@ -150,8 +141,8 @@ class TestStrategy(bt.Strategy):
         # rsi = bt.indicators.RSI(self.datas[0])
         # bt.indicators.SmoothedMovingAverage(rsi, period=10)
 
-        self.rsi = bt.indicators.RSI(self.datas[0])
-        bt.indicators.ATR(self.datas[0]).plot = False
+        # self.rsi = bt.indicators.RSI(self.datas[0])
+        # bt.indicators.ATR(self.datas[0]).plot = False
 
         self.macd_histogram = self.macd.macd - self.macd.signal
 
@@ -241,26 +232,29 @@ class TestStrategy(bt.Strategy):
 
 
 
-
     # region [blue]
     def macd_strategy(self):
-
         current_price = self.dataclose[0]
-        ten_percent   = 0.10
+
+        #account for trading cost
+        potential_profit = current_price - self.buyprice
+        trade_fee        = current_price * 0.001
 
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if not self.order:
             # Check if we are in the market
             if not self.position:
-                if self.macd_histogram[0] >= 0.01:
+                if self.macd_histogram[0] >= 0.10:
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
-
-                    # sell at least 10% higher than bought price
-                    self.price_to_sell = self.buyprice + (self.buyprice * ten_percent)
+                    self.price_to_sell = self.buyprice + (self.buyprice * 0.01)
             else:
-                if self.macd_histogram[0] < ten_percent or current_price >= self.price_to_sell:
+                if self.macd_histogram[0] < 0.10:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+        
+        # self.prev_macd = self.macd.macd[0]
+
+        
     # end region
 
 
@@ -361,16 +355,38 @@ class TestStrategy(bt.Strategy):
         # self.ppsr()
         # self.hybrid_strategy()
         # self.moving_averages()
-        self.exponential_averages()
+        # self.exponential_averages()
+        pass
     # end region
 
 
-"""
-Works with .csv file format only.
-This function is accurate with crypto only because crypto runs 7 days a week.
-Stocks run 5 days and this function does not account for that
-"""
+
+    # def next(self, strategy_name):
+    #     if strategy_name == 'buy_and_hold':
+    #         self.buy_and_hold()
+    #     elif strategy_name == 'macd':
+    #         self.macd_strategy()
+    #     elif strategy_name == 'rsi':
+    #         self.rsi_strategy()
+    #     elif strategy_name == 'ppsr':
+    #         self.ppsr()
+    #     elif strategy_name == 'hybrid_strategy':
+    #         self.hybrid_strategy()
+    #     elif strategy_name == 'moving_averages':
+    #         self.moving_averages()
+    #     elif strategy_name == 'exponential_averages':
+    #         self.exponential_averages()
+    #     else:
+    #         print("invalid option")
+
+
+
 def get_total_backtested_years(filename):
+    """
+    Works with .csv file format only.
+    This function is accurate with crypto only because crypto runs 7 days a week.
+    Stocks run 5 days and this function does not account for that
+    """    
     second_line = ""
     last_line   = ""
     with open(filename, "r") as file:
@@ -394,25 +410,23 @@ def get_total_backtested_years(filename):
     return round(years_total, 1)
 
 
-if __name__ == '__main__':
-    
+def run_backtesting(filename):
     # Create a cerebro entity
     cerebro = bt.Cerebro()
 
     # Add a strategy
-    cerebro.addstrategy(TestStrategy)
+    cerebro.addstrategy(BaseStrategies)
 
     # Datas are in a subfolder of the samples. Need to find where the script is
     # because it could have been called from anywhere
-    filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\BTC-USD.csv'
 
     
     modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, filename)
 
-    start_year  = 2011
-    start_month = 2
-    start_day   = 14
+    start_year  = 2014
+    start_month = 3
+    start_day   = 15
 
     end_year  = 2021
     end_month = 3
@@ -436,7 +450,11 @@ if __name__ == '__main__':
     cerebro.addsizer(bt.sizers.AllInSizer)
 
     # Set the commission
-    cerebro.broker.setcommission(commission=0.0)
+    # cerebro.broker.setcommission(commission=0.0)
+
+    binance_trade_fee = 0.00075
+    relative_trade_fee = cerebro.broker.getvalue() * binance_trade_fee
+    cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
 
     # Run over everything
     cerebro.run()
@@ -457,12 +475,9 @@ if __name__ == '__main__':
         print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
     print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
 
+    cerebro.plot()    
 
-    cerebro.plot()
 
-
-# Starting Portfolio Value:    $1,000.00
-# Final Portfolio Value:       $133,752.44
-# Total Percent gained:        %13,375.24
-# Average Percent Per Year:    %2,057.73
-# Total Backtested Years:      6.5
+if __name__ == '__main__':
+    filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\BTC-USD.csv'
+    run_backtesting(filename)

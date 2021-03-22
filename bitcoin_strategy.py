@@ -178,10 +178,6 @@ class TestStrategy(bt.Strategy):
 
 
 
-    """
-    In our macd strategy, if we could take the slope of the MACD line and 
-    sell when once the slope becomes negative for MRNA, then we would profit much more
-    """
 
     # region [blue]
     def macd_strategy(self):
@@ -305,12 +301,12 @@ class TestStrategy(bt.Strategy):
     # region [red]
     def next(self):
         # self.buy_and_hold()
-        # self.macd_strategy()
+        self.macd_strategy()
         # self.rsi_strategy()
         # self.ppsr()
         # self.hybrid_strategy()
         # self.moving_averages()
-        self.exponential_averages()
+        # self.exponential_averages()
     # end region
 
 
@@ -389,7 +385,6 @@ if __name__ == '__main__':
     relative_trade_fee = cerebro.broker.getvalue() * binance_trade_fee
     cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)
 
-
     # Run over everything
     cerebro.run()
 
@@ -400,7 +395,7 @@ if __name__ == '__main__':
     print()
     print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
     print(Color.OKGREEN + Color.UNDERLINE + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
-    # print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
+    print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
 
 
     cerebro.plot()
