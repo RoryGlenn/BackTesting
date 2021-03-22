@@ -36,12 +36,6 @@ class Color:
 
 
 class PivotPoints():
-    # params = (('usepp1', False), ('plot_on_daily', False))
-
-    # def log(self, txt, dt=None):
-    #     ''' Logging function for this strategy'''
-    #     dt = dt or self.datas[0].datetime.date(0)
-    #     print('%s, %s' % (dt.isoformat(), txt))    
 
     def __init__(self, data):
         self.closes = data.close
@@ -49,7 +43,6 @@ class PivotPoints():
         self.highs = data.high
         self.lows = data.low
         self.warmup = False
-        # self.dates = data.datetime.date(-2369)
 
         date_list  = list()
         open_list  = list()
@@ -123,8 +116,6 @@ class TestStrategy(bt.Strategy):
         self.buyprice      = None
         self.buycomm       = None
         self.price_to_sell = None
-        self.biggest_win   = None
-        self.biggest_lose  = None
         self.total_buys    = 0
         self.total_sells   = 0
 
@@ -141,8 +132,13 @@ class TestStrategy(bt.Strategy):
 
         # Indicators for the plotting show
         self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
-        bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True # Blue
+        bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True         # Blue
         self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
+
+
+        self.ema_long = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
+        self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12) 
+
 
         self.stochastic_slow = bt.indicators.StochasticSlow(self.datas[0])
 
@@ -219,15 +215,6 @@ class TestStrategy(bt.Strategy):
         
         current_price = self.dataclose[0]
 
-        print("current_price: ", current_price)
-        print("Date: ", self.PivotPoints.ppsr_df['Date'][self.pp_counter])
-        print("s1: ", self.PivotPoints.ppsr_df['s1'][self.pp_counter])
-        print("r1: ", self.PivotPoints.ppsr_df['r1'][self.pp_counter])
-        
-        print("total buys: ", self.total_buys)
-        print("total sells", self.total_sells)
-        print()
-
         if self.PivotPoints.warmup:
 
             # Check if an order is pending ... if yes, we cannot send a 2nd one
@@ -254,10 +241,6 @@ class TestStrategy(bt.Strategy):
 
 
 
-    """
-    In our macd strategy, if we could take the slope of the MACD line and 
-    sell when once the slope becomes negative for MRNA, then we would profit much more
-    """
 
     # region [blue]
     def macd_strategy(self):
@@ -342,21 +325,31 @@ class TestStrategy(bt.Strategy):
         # self.ema_red_line  # Red
         # self.wma_blue_line # Blue
 
-        print("blue line", self.wma_blue_line[0])
-        print("red line",  self.ema_red_line[0])
-
-        current_price = self.dataclose[0]
-
         if not self.order:
             if not self.position:
                 if self.wma_blue_line[0] > self.ema_red_line[0]:
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
-                    self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
             else:
                 if self.wma_blue_line[0] < self.ema_red_line[0]:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
     # end region
+
+
+
+    # region [blue]
+    def exponential_averages(self):
+
+        if not self.order:
+            if not self.position:
+                if self.ema_short[0] > self.ema_long[0]:
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+            else:
+                if self.ema_short[0] < self.ema_long[0]:
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
+    # end region
+
 
 
 
@@ -367,7 +360,8 @@ class TestStrategy(bt.Strategy):
         # self.rsi_strategy()
         # self.ppsr()
         # self.hybrid_strategy()
-        self.moving_averages()
+        # self.moving_averages()
+        self.exponential_averages()
     # end region
 
 

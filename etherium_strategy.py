@@ -131,6 +131,7 @@ class TestStrategy(bt.Strategy):
         bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True # Blue
         self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
         
+
         
         # bt.indicators.StochasticSlow(self.datas[0])
 
@@ -341,6 +342,8 @@ class TestStrategy(bt.Strategy):
             self.order = self.buy()
             self.buyprice = self.dataclose[0]
     # end region
+
+
 
 
     # region [red]

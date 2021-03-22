@@ -28,59 +28,6 @@ class Color:
     UNDERLINE = '\033[4m'
 
 
-class PivotPoints():
-
-    def __init__(self, data):
-        self.closes = data.close
-        self.opens = data.open
-        self.highs = data.high
-        self.lows = data.low
-        self.warmup = False
-        # self.dates = data.datetime.date(-2369)
-
-        date_list  = list()
-        open_list  = list()
-        high_list  = list()
-        close_list = list()
-        low_list   = list()
-
-        for i in range(-2369, 0):
-            date_list.append(str(data.datetime.date(i)))
-
-        # even though there are 2377 entries in the excel, it will only print up to 2371 and will not read the very last entry
-        # we also start with 1 and not 0, i know, its weird...
-        for i in range(1, 2370):
-            close_list.append(self.closes[i])
-            open_list.append(self.opens[i])
-            high_list.append(self.highs[i])
-            low_list.append(self.lows[i])
-
-        dohlc_dict = { 'Date': date_list, 'Open': open_list, 'High': high_list, 'Low': low_list, 'Close': close_list }
-
-        self.s2 = list()
-        self.s1 = list()
-        self.pp = list()
-        self.r1 = list()
-        self.r2 = list()
-        date_list = list()
-
-        for i in range(0, len(dohlc_dict['High'])-1):
-            date_list.append(dohlc_dict['Date'][i+1])
-            p = (dohlc_dict['High'][i] + dohlc_dict['Low'][i] + dohlc_dict['Close'][i]) / 3.0
-            self.pp.append(p)
-
-            p2 = p * 2.0
-            self.s1.append(p2 - dohlc_dict['High'][i])
-            self.r1.append(p2 - dohlc_dict['Low'][i])
-
-            hilo = dohlc_dict['High'][i] - dohlc_dict['Low'][i]
-            
-            self.s2.append(p - hilo)
-            self.r2.append(p + hilo)
-
-        self.ppsr_df = pd.DataFrame({'Date':date_list, 's2':self.s2, 's1':self.s1, 'pp':self.pp, 'r1':self.r1, 'r2':self.r2 })
-
-
 class TestStrategy(bt.Strategy):
     lines = ('macd', 'signal', 'histo',)
     params = (
@@ -115,20 +62,15 @@ class TestStrategy(bt.Strategy):
         self.prev_macd = 0
 
         self.dataclose = self.datas[0].close
-        # print(self.datas[0].close[-1]) # third to the last entry
-        # print(self.datas[0].close[0])  # second to the last
-        # print(self.datas[0].close[1])  # gets the first data entry
-        
-
-        data = self.datas[0]
-        self.PivotPoints = PivotPoints(data)
-        self.pp_counter = 0
-        
 
         # Indicators for the plotting show
-        # bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)
-        # bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True
-        # bt.indicators.StochasticSlow(self.datas[0])
+        # self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
+        # bt.indicators.WeightedMovingAverage(self.datas[0], period=25).subplot = True         # Blue
+        # self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
+
+
+        self.ema_long = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
+        self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12) 
 
         self.macd = bt.indicators.MACD(self.data,
                                        period_me1=self.p.macd1,
@@ -138,8 +80,8 @@ class TestStrategy(bt.Strategy):
         # rsi = bt.indicators.RSI(self.datas[0])
         # bt.indicators.SmoothedMovingAverage(rsi, period=10)
 
-        self.rsi = bt.indicators.RSI(self.datas[0])
-        bt.indicators.ATR(self.datas[0]).plot = False
+        # self.rsi = bt.indicators.RSI(self.datas[0])
+        # bt.indicators.ATR(self.datas[0]).plot = False
 
         self.macd_histogram = self.macd.macd - self.macd.signal
 
@@ -320,13 +262,55 @@ class TestStrategy(bt.Strategy):
     # end region
 
 
+
+
+
+    # region [blue]
+    def moving_averages(self):
+        # self.ema_red_line  # Red
+        # self.wma_blue_line # Blue
+
+        if not self.order:
+            if not self.position:
+                if self.wma_blue_line[0] > self.ema_red_line[0]:
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+            else:
+                if self.wma_blue_line[0] < self.ema_red_line[0]:
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
+    # end region
+
+
+
+    # region [blue]
+    def exponential_averages(self):
+
+        line = self.ema_long[0] + (self.ema_long[0] * 0.0008)
+
+        if not self.order:
+            if not self.position:
+                # if self.ema_short[0] > self.ema_long[0]:
+                if self.ema_short[0] > line:
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+            else:
+                if self.ema_short[0] < self.ema_long[0]:
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
+    # end region
+
+
+
+
+
     # region [red]
     def next(self):
         # self.buy_and_hold()
-        self.macd_strategy()
+        # self.macd_strategy()
         # self.rsi_strategy()
         # self.ppsr()
         # self.hybrid_strategy()
+        # self.moving_averages()
+        self.exponential_averages()
     # end region
 
 
