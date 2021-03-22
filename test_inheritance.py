@@ -1,11 +1,11 @@
-from  base_strategy import BaseStrategies, PivotPoints, get_total_backtested_years, run_backtesting
-import datetime
+from base_strategy import BaseStrategies, PivotPoints, get_total_backtested_years, run_backtesting
+from color         import Color
+from os            import system
+
 import backtrader as bt
-# import os
+import datetime
+import os.path
 import sys
-import os.path  # To manage paths
-from color import Color
-from os import system
 
 
 system("cls")
@@ -16,6 +16,18 @@ class test_strat(BaseStrategies):
     def __init__(self):
         super(test_strat, self).__init__()
 
+
+    # region [red]
+    def next(self):
+        # self.buy_and_hold()
+        self.macd_strategy()
+        # self.rsi_strategy()
+        # self.ppsr()
+        # self.hybrid_strategy()
+        # self.moving_averages()
+        # self.exponential_averages()
+        
+    # end region
 
 
 def run_backtesting(filename):

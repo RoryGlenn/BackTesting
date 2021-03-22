@@ -347,17 +347,17 @@ class BaseStrategies(bt.Strategy):
 
 
 
-    # region [red]
-    def next(self):
-        # self.buy_and_hold()
-        # self.macd_strategy()
-        # self.rsi_strategy()
-        # self.ppsr()
-        # self.hybrid_strategy()
-        # self.moving_averages()
-        # self.exponential_averages()
-        pass
-    # end region
+    # # region [red]
+    # def next(self):
+    #     # self.buy_and_hold()
+    #     # self.macd_strategy()
+    #     # self.rsi_strategy()
+    #     # self.ppsr()
+    #     # self.hybrid_strategy()
+    #     # self.moving_averages()
+    #     # self.exponential_averages()
+    #     pass
+    # # end region
 
 
 
