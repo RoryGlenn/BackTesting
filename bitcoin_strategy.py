@@ -1,18 +1,11 @@
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
-import argparse
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 import backtrader as bt
-import backtrader.feeds as btfeeds
-import backtrader.utils.flushfile
 import datetime
-import backtrader as bt
-import datetime # For datetime objects
 import sys      # To find out the script name (in argv[0])
-import backtrader as bt
 import os
-import sys
-import os.path  # To manage paths
 from os import system
+import os.path  # To manage paths
+import sys
 import pandas as pd
 
 system("cls")
@@ -36,7 +29,6 @@ class Color:
 
 
 class PivotPoints():
-
 
     def __init__(self, data):
         self.closes = data.close
@@ -87,7 +79,6 @@ class PivotPoints():
             self.r2.append(p + hilo)
 
         self.ppsr_df = pd.DataFrame({'Date':date_list, 's2':self.s2, 's1':self.s1, 'pp':self.pp, 'r1':self.r1, 'r2':self.r2 })
-        print(self.ppsr_df)
 
 
 class TestStrategy(bt.Strategy):
@@ -114,7 +105,7 @@ class TestStrategy(bt.Strategy):
 
         # To keep track of pending orders and buy price/commission
         self.order         = None
-        self.buyprice      = None
+        self.buyprice      = 0
         self.buycomm       = None
         self.price_to_sell = None
         self.biggest_win   = None
@@ -207,8 +198,6 @@ class TestStrategy(bt.Strategy):
 
     # region [blue]
     def ppsr(self):
-        # self.log('Close, %.2f' % self.dataclose[0])
-        
         current_price = self.dataclose[0]
 
         print("current_price: ", current_price)
@@ -229,7 +218,6 @@ class TestStrategy(bt.Strategy):
                 if not self.position:
 
                     if current_price < self.PivotPoints.ppsr_df['s2'][self.pp_counter]:
-                        self.log('BUY CREATE, %.2f' % self.dataclose[0])
                         self.order    = self.buy()
                         self.buyprice = self.dataclose[0]
                         self.total_buys += 1
@@ -238,7 +226,6 @@ class TestStrategy(bt.Strategy):
                         self.price_to_sell = self.buyprice + (self.buyprice * 0.01)
                 else:
                     if current_price > self.PivotPoints.ppsr_df['r2'][self.pp_counter] and current_price > self.price_to_sell:
-                        self.log('SELL CREATE, %.2f' % self.dataclose[0])
                         self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
                         self.total_sells += 1
         
@@ -255,25 +242,25 @@ class TestStrategy(bt.Strategy):
 
     # region [blue]
     def macd_strategy(self):
-        # self.log('Close, %.2f' % self.dataclose[0])
-        
         current_price = self.dataclose[0]
-        ten_percent   = 0.10
+
+        #account for trading cost
+        potential_profit = current_price - self.buyprice
+        trade_fee        = current_price * 0.001
 
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if not self.order:
             # Check if we are in the market
             if not self.position:
-                if self.macd_histogram[0] >= 1:
-                    # self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                if self.macd_histogram[0] >= 0.1:
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
-
-                    # sell at least 10% higher than bought price
-                    self.price_to_sell = self.buyprice + (self.buyprice * ten_percent)
+                    self.price_to_sell = self.buyprice + (self.buyprice * 0.001)
             else:
-                if self.macd_histogram[0] < 0.10: #or current_price >= self.price_to_sell:
+                if self.macd_histogram[0] < 0.10: #and current_price >= self.price_to_sell: #and potential_profit > trade_fee:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+                # elif current_price - (self.buyprice * 0.01) < self.buyprice:
+                    # self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
 
@@ -281,25 +268,18 @@ class TestStrategy(bt.Strategy):
 
     # region [blue]
     def rsi_strategy(self):
-        # Simply log the closing price of the series from the reference
-        # self.log('Close, %.2f' % self.dataclose[0])
-
         current_price = self.dataclose[0]
 
         if not self.order:
             if not self.position:
-                if self.rsi <= 35:
-                    # self.log('BUY CREATE, %.2f' % self.dataclose[0])
+                if self.rsi <= 64:
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
             else:
-                if self.rsi >= 65 and current_price >= self.price_to_sell:
-                    # self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                if self.rsi >= 70 and current_price >= self.price_to_sell:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
-
-
 
 
 
@@ -312,22 +292,17 @@ class TestStrategy(bt.Strategy):
     # region [blue]
     def hybrid_strategy(self):
         # Simply log the closing price of the series from the reference
-        self.log('Close, %.2f' % self.dataclose[0])
 
         current_price = self.dataclose[0]
-
-        print("self.macd_histogram[0]:", self.macd_histogram[0])
 
         if not self.order:
             if not self.position:
                 if self.rsi <= 51:
-                    self.log('BUY CREATE, %.2f' % self.dataclose[0])
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
             else:
-                if self.macd_histogram[0] >= 4: #and current_price >= self.price_to_sell:
-                    self.log('SELL CREATE, %.2f' % self.dataclose[0])
+                if self.macd_histogram[0] >= 4 and current_price >= self.price_to_sell:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -389,10 +364,8 @@ if __name__ == '__main__':
     # Add a strategy
     cerebro.addstrategy(TestStrategy)
 
-    # Datas are in a subfolder of the samples. Need to find where the script is
-    # because it could have been called from anywhere
     filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\BTC-USD.csv'
-    
+
     modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, filename)
 
@@ -411,6 +384,8 @@ if __name__ == '__main__':
             todate=datetime.datetime(end_year, end_month, end_day),
             reverse=False)
 
+      
+
     # First add the original data - smaller timeframe
     cerebro.adddata(data)
 
@@ -422,7 +397,7 @@ if __name__ == '__main__':
     cerebro.addsizer(bt.sizers.AllInSizer)
 
     # Set the commission
-    cerebro.broker.setcommission(commission=0.0)
+    cerebro.broker.setcommission(commission=0)
 
     # Run over everything
     cerebro.run()
