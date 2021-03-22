@@ -7,6 +7,7 @@ import os.path  # To manage paths
 from os import system
 from color import Color
 import pandas as pd
+from time import time
 
 system("cls")
 print()
@@ -113,8 +114,8 @@ class BaseStrategies(bt.Strategy):
         
 
         # Indicators for the plotting show
-        # self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
-        # self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
+        self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
+        self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
 
         
         self.ema_long  = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
@@ -130,7 +131,7 @@ class BaseStrategies(bt.Strategy):
         # rsi = bt.indicators.RSI(self.datas[0])
         # bt.indicators.SmoothedMovingAverage(rsi, period=10)
 
-        # self.rsi = bt.indicators.RSI(self.datas[0])
+        self.rsi = bt.indicators.RSI(self.datas[0])
         # bt.indicators.ATR(self.datas[0]).plot = False
 
         self.macd_histogram = self.macd.macd - self.macd.signal
@@ -262,7 +263,7 @@ class BaseStrategies(bt.Strategy):
                     self.buyprice      = self.dataclose[0]
                     self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
             else:
-                if self.rsi >= 65 and current_price >= self.price_to_sell:
+                if self.rsi >= 65:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -397,6 +398,18 @@ def get_total_backtested_years(filename):
     days_total  = time_end - time_start
     years_total = days_total.days / 365
     return round(years_total, 1)
+
+
+
+
+def print_time_elapsed(start_time) -> None:
+    end_time = time()
+    total_time = end_time - start_time
+    seconds = int(total_time) % 60
+    minutes = int(total_time // 60) % 60
+    hours = int(total_time // 3600) % 60
+    print(f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n")
+
 
 
 def run_backtesting(filename):

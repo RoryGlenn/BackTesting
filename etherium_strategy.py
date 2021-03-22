@@ -3,8 +3,10 @@ import backtrader as bt
 import datetime
 import sys      # To find out the script name (in argv[0])
 import os
+from time import time
 from color import Color
-from base_strategy import BaseStrategies
+
+from base_strategy import BaseStrategies, print_time_elapsed
 
 os.system("cls")
 print()
@@ -17,10 +19,8 @@ class EthereumStrategy(BaseStrategies):
 
 
     # region [blue]
-    def macd_strategy(self):
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
+    def macd_day_strategy(self):
         if not self.order:
-            # Check if we are in the market
             if not self.position:
                 if self.macd_histogram[0] >= 0:
                     self.order    = self.buy()
@@ -28,6 +28,35 @@ class EthereumStrategy(BaseStrategies):
                 if self.macd_histogram[0] < -3:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
+    # end region
+
+   
+
+    # region [blue]
+    def exponential_averages(self):
+
+        if not self.order:
+            if not self.position:
+                if self.ema_short[0] > self.ema_long[0] + (self.ema_long[0] * 0.005):
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+            else:
+                if self.ema_short[0] < self.ema_long[0]:
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
+    # end region
+
+
+    # region [blue]
+    def hybrid_strategy(self):
+        if not self.order:
+            if not self.position:
+                if self.ema_short[0] > self.ema_long[0] + (self.ema_long[0] * 0.004):
+                    self.order    = self.buy()
+                    self.buyprice = self.dataclose[0]
+            else:
+                if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5:
+                # if self.ema_short[0] < self.ema_long[0] + (self.ema_long[0] * 0.004):
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
 
@@ -43,56 +72,45 @@ class EthereumStrategy(BaseStrategies):
             self.moving_averages()
             self.exponential_averages()
         """
-        
-        self.macd_strategy()
+
+        # self.buy_and_hold()
+        # self.macd_day_strategy()
+        # self.exponential_averages()
+        self.hybrid_strategy()
     # end region  
 
 
 
-def run_backtesting(filename):
+
+def run_backtesting():
     # Create a cerebro entity
     cerebro = bt.Cerebro()
 
     # Add a strategy
     cerebro.addstrategy(EthereumStrategy)
 
-    # modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
-    # datapath = os.path.join(modpath, filename)
+    # data = bt.feeds.GenericCSVData(
+    #     timeframe=bt.TimeFrame.Days,
+    #     # compression=5,
+    #     dataname='ETH-USD.csv',
+    #     nullvalue=0,
+    #     dtformat=('%Y-%m-%d'),
+    #     datetime=0,
+    #     open=1,
+    #     high=2,
+    #     low=3,
+    #     close=4,
+    #     volume=6,
+    #     openinterest=-1
+    # )
 
-    # start_year = 2017
-    # start_month = 3
-    # start_day   = 15
-
-    # end_year  = 2021
-    # end_month = 3
-    # end_day   = 19
-
-    # Create a Data Feed
-    # data = bt.feeds.YahooFinanceCSVData(
-    #         dataname=datapath,
-    #         fromdate=datetime.datetime(start_year, start_month, start_day),
-    #         todate=datetime.datetime(end_year, end_month, end_day),
-    #         reverse=False)
-
-    data = bt.feeds.GenericCSVData(
-        timeframe=bt.TimeFrame.Minutes,
-        compression=5,
-        dataname='ETHUSD.txt',
-        # fromdate=datetime.datetime(2017, 3, 15),
-        # todate=datetime.datetime(2021, 3, 19),
-        nullvalue=0,
-        dtformat=('%Y-%m-%d'),
-        datetime=0,
-        open=1,
-        high=2,
-        low=3,
-        close=4,
-        volume=6,
-        openinterest=-1
-    )
+    data = bt.feeds.YahooFinanceCSVData(
+            dataname="ETH-USD.csv",
+            fromdate=datetime.datetime(2015, 8, 7),
+            todate=datetime.datetime(2021, 3, 21),
+            reverse=False)
 
 
-    # First add the original data - smaller timeframe
     cerebro.adddata(data)
 
     # Set our desired cash start
@@ -107,8 +125,8 @@ def run_backtesting(filename):
     cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
 
     # Run over everything
-    cerebro.run(runonce=False)
-    # cerebro.run()
+    # cerebro.run(runonce=False)
+    cerebro.run()
 
     # Print out the final result
     print()
@@ -120,7 +138,7 @@ def run_backtesting(filename):
 
 
 
-
 if __name__ == '__main__':
-    filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\ETH-USD.txt'
-    run_backtesting(filename)
+    start_time = time()
+    run_backtesting()
+    print_time_elapsed(start_time)
