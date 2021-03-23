@@ -75,7 +75,8 @@ class EthereumStrategy(BaseStrategies):
 
         # self.buy_and_hold()
         # self.hybrid_strategy()
-        self.stochastic_fast()
+        # self.stochastic_fast()
+        self.stochastic_slow()
     # end region
 
 
@@ -105,8 +106,8 @@ def run_backtesting():
     data = bt.feeds.YahooFinanceCSVData(
             dataname="data/ETH-USD.csv",
             # 
-            # fromdate=datetime.datetime(2017, 8, 7),
-            # todate=datetime.datetime(2021, 3, 19),
+            fromdate=datetime.datetime(2017, 8, 7),
+            todate=datetime.datetime(2018, 3, 19),
 
             # slice 1
             # fromdate=datetime.datetime(2017, 1, 11),
@@ -121,8 +122,8 @@ def run_backtesting():
             # todate=datetime.datetime(2020, 1, 11),
 
             # slice 4
-            fromdate=datetime.datetime(2020, 1, 11),
-            todate=datetime.datetime(2021, 1, 11),            
+            # fromdate=datetime.datetime(2020, 1, 11),
+            # todate=datetime.datetime(2021, 1, 11),            
             
             reverse=False)
 
@@ -148,8 +149,6 @@ def run_backtesting():
     print()
     print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
     print(Color.OKGREEN + Color.UNDERLINE + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
-
-
 
     # plot the results
     cerebro.plot()    

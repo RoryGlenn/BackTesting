@@ -78,8 +78,9 @@ class BaseStrategies(bt.Strategy):
         ('atrdist', 3.0),   # ATR distance for stop price
         ('smaperiod', 30),  # SMA Period (pretty standard)
         ('dirperiod', 10),  # Lookback period to consider SMA trend direction
-        ('k_period', 14), # lookback period for highest/lowest
-        ('d_period', 3), # smoothing period for d with the SMA
+        
+        ('k_period', 14),   # lookback period for highest/lowest
+        ('d_period', 3),    # smoothing period for d with the SMA
     
     
     )
@@ -108,24 +109,12 @@ class BaseStrategies(bt.Strategy):
         # data = self.datas[0]
         # self.PivotPoints = PivotPoints(data)
         # self.pp_counter = 0
-        
-
-        # Indicators for the plotting show
-        # self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
-        # self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
-
-
-        # declare the highest/lowest
-        highest = bt.ind.Highest(self.data, period=self.p.k_period)
-        lowest = bt.ind.Lowest(self.data, period=self.p.k_period)
-        # calculate and assign lines
-        self.k = k = (self.data - lowest) / (highest - lowest)
-        self.d = d = bt.ind.SMA(k, period=self.p.d_period)
-        self.mystoc = abs(k - k(-1)) / 2.0
 
         self.ema_long  = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
         self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12)
 
+        # Manual set-up of the lookback period during __init__ with addminperiod
+        self.addminperiod(self.p.k_period + self.p.d_period)
         self.stoc_slow = bt.indicators.StochasticSlow(self.datas[0])
         self.stoc_fast = bt.indicators.StochasticFast(self.datas[0])
 
@@ -134,11 +123,8 @@ class BaseStrategies(bt.Strategy):
                                        period_me2=self.p.macd2,
                                        period_signal=self.p.macdsig)
 
-        # rsi = bt.indicators.RSI(self.datas[0])
-        # bt.indicators.SmoothedMovingAverage(rsi, period=10)
 
         self.rsi = bt.indicators.RSI(self.datas[0])
-        # bt.indicators.ATR(self.datas[0]).plot = False
 
         self.macd_histogram = self.macd.macd - self.macd.signal
 
@@ -328,22 +314,6 @@ class BaseStrategies(bt.Strategy):
 
 
 
-    # # region [blue]
-    # def moving_averages(self):
-    #     # self.ema_red_line  # Red
-    #     # self.wma_blue_line # Blue
-
-    #     if not self.order:
-    #         if not self.position:
-    #             if self.wma_blue_line[0] > self.ema_red_line[0]:
-    #                 self.order         = self.buy()
-    #                 self.buyprice      = self.dataclose[0]
-    #         else:
-    #             if self.wma_blue_line[0] < self.ema_red_line[0]:
-    #                 self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
-    # # end region
-
-
 
     # region [blue]
     def exponential_averages(self):
@@ -357,19 +327,61 @@ class BaseStrategies(bt.Strategy):
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
     # end region
 
- 
 
-    # region [blue]
+
     def stochastic_fast(self):
+        """
+        Stochastic Fast
+        # %K = (Current Close — Lowest Low (x periods ago))/(Highest High (x periods ago) — Lowest Low (x periods ago)) * 100
+        # %D = y-day SMA of %K
+        """
+
+        # Get enough data points to calculate k and do it
+        d = self.data.get(size=self.p.k_period)
+        hi = max(d)
+        lo = min(d)
+        self.lines.k[0] = k0 = (self.data[0] - lo) / (hi - lo)
+       
+        # Get enough ks to calculate the SMA of k. Assign to d
+        last_ks = self.l.k.get(size=self.p.d_period)
+        self.lines.d[0] = sum(last_ks) / self.p.d_period
+        
+        # Now calculate mystoc
+        self.lines.mystoc[0] = abs(k0 - self.l.k[-1]) / 2.0
+
+        print('k:      ', self.lines.k[0])
+        print('d:      ', self.lines.d[0])
+        print('mystoc: ', self.lines.mystoc[0])
+        print()
+
         if not self.order:
             if not self.position:
-                if self.k[0] > self.d[0] + (self.d[0] * 0.009):
+                if self.lines.k[0] > self.lines.d[0]:
                     self.order         = self.buy()
                     self.buyprice      = self.dataclose[0]
             else:
-                if self.k[0] < self.d[0] + (self.d[0] * 0.1) :
+                if self.lines.k[0] < self.lines.d[0]:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
-    # end region
+
+
+
+    def stochastic_slow(self):
+        """
+        Slow Stochastic Oscillator:
+        
+        Slow %K = Fast %K smoothed with 3-period SMA
+        Slow %D = 3-period SMA of Slow %K
+        """
+
+
+        if not self.order:
+            if not self.position:
+                if self.stoc_slow.percK[0] > self.stoc_slow.percD[0] + (self.stoc_slow.percD[0] * 0.005):
+                    self.order    = self.buy()
+                    self.buyprice = self.dataclose[0]
+            else:
+                if self.stoc_slow.percK[0] < self.stoc_slow.percD[0] -  (self.stoc_slow.percD[0] * 0.005):
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
 
 def get_total_backtested_years(filename):
