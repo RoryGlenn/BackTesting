@@ -104,14 +104,15 @@ class BaseStrategies(bt.Strategy):
         # print(self.datas[0].close[-1]) # third to the last entry
         # print(self.datas[0].close[0])  # second to the last
         # print(self.datas[0].close[1])  # gets the first data entry
-        
 
         # data = self.datas[0]
         # self.PivotPoints = PivotPoints(data)
-        # self.pp_counter = 0
+        # self.pp_counter  = 0
 
-        self.ema_long  = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
-        self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12)
+        self.ema_long        = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
+        self.ema_short       = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12)
+        self.ema_very_short  = bt.indicators.ExponentialMovingAverage(self.datas[0], period=4)  
+
 
         # Manual set-up of the lookback period during __init__ with addminperiod
         self.addminperiod(self.p.k_period + self.p.d_period)
