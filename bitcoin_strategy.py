@@ -1,14 +1,11 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 import backtrader as bt
 import datetime
-import sys      # To find out the script name (in argv[0])
 import os
 from color import Color
 from base_strategy import BaseStrategies
-
 os.system("cls")
 print()
-
 
 
 class BitcoinStrategy(BaseStrategies):
@@ -61,29 +58,35 @@ class BitcoinStrategy(BaseStrategies):
 
 
 
-def run_backtesting(filename):
+def run_backtesting():
     # Create a cerebro entity
     cerebro = bt.Cerebro()
 
     # Add a strategy
     cerebro.addstrategy(BitcoinStrategy)
 
-    modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, filename)
+    # modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
+    # datapath = os.path.join(modpath, filename)
 
-    start_year  = 2017
-    start_month = 3
-    start_day   = 15
+    # start_year  = 2017
+    # start_month = 3
+    # start_day   = 15
 
-    end_year  = 2021
-    end_month = 3
-    end_day   = 19
+    # end_year  = 2021
+    # end_month = 3
+    # end_day   = 19
 
     # Create a Data Feed
+    # data = bt.feeds.YahooFinanceCSVData(
+    #         dataname=datapath,
+    #         fromdate=datetime.datetime(start_year, start_month, start_day),
+    #         todate=datetime.datetime(end_year, end_month, end_day),
+    #         reverse=False)
+
     data = bt.feeds.YahooFinanceCSVData(
-            dataname=datapath,
-            fromdate=datetime.datetime(start_year, start_month, start_day),
-            todate=datetime.datetime(end_year, end_month, end_day),
+            dataname="data/BTC-USD.csv",
+            fromdate=datetime.datetime(2017, 3, 15),
+            todate=datetime.datetime(2021, 3, 19),
             reverse=False)
 
     cerebro.adddata(data)
@@ -114,5 +117,4 @@ def run_backtesting(filename):
 
 
 if __name__ == '__main__':
-    filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\BTC-USD.csv'
-    run_backtesting(filename)
+    run_backtesting()

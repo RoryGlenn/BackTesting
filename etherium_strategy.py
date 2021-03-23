@@ -14,6 +14,7 @@ print()
 
 
 class EthereumStrategy(BaseStrategies):
+    
     def __init__(self):
         super(EthereumStrategy, self).__init__()
 
@@ -34,7 +35,6 @@ class EthereumStrategy(BaseStrategies):
 
     # region [blue]
     def exponential_averages(self):
-
         if not self.order:
             if not self.position:
                 if self.ema_short[0] > self.ema_long[0] + (self.ema_long[0] * 0.005):
@@ -51,11 +51,11 @@ class EthereumStrategy(BaseStrategies):
     def hybrid_strategy(self):
         if not self.order:
             if not self.position:
-                if self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * 0.004 or self.rsi < 21:
+                if self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * 0.004 or self.rsi < 20:
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
             else:
-                if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5:
+                if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5 :
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -74,9 +74,9 @@ class EthereumStrategy(BaseStrategies):
         """
 
         # self.buy_and_hold()
-        self.hybrid_strategy()
-    # end region  
-
+        # self.hybrid_strategy()
+        self.stochastic_fast()
+    # end region
 
 
 
@@ -103,9 +103,27 @@ def run_backtesting():
     # )
 
     data = bt.feeds.YahooFinanceCSVData(
-            dataname="ETH-USD.csv",
-            fromdate=datetime.datetime(2017, 8, 7),
-            todate=datetime.datetime(2021, 3, 21),
+            dataname="data/ETH-USD.csv",
+            # 
+            # fromdate=datetime.datetime(2017, 8, 7),
+            # todate=datetime.datetime(2021, 3, 19),
+
+            # slice 1
+            # fromdate=datetime.datetime(2017, 1, 11),
+            # todate=datetime.datetime(2018, 1, 11),
+
+            # slice 2
+            # fromdate=datetime.datetime(2018, 1, 11),
+            # todate=datetime.datetime(2019, 1, 11),
+
+            # slice 3
+            # fromdate=datetime.datetime(2019, 1, 11),
+            # todate=datetime.datetime(2020, 1, 11),
+
+            # slice 4
+            fromdate=datetime.datetime(2020, 1, 11),
+            todate=datetime.datetime(2021, 1, 11),            
+            
             reverse=False)
 
 
@@ -130,6 +148,8 @@ def run_backtesting():
     print()
     print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
     print(Color.OKGREEN + Color.UNDERLINE + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
+
+
 
     # plot the results
     cerebro.plot()    

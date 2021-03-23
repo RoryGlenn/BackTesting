@@ -1,14 +1,9 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 import datetime # For datetime objects
-import sys      # To find out the script name (in argv[0])
 import backtrader as bt
-import os
-import os.path  # To manage paths
 from os import system
-from color import Color
 import pandas as pd
 from time import time
-
 system("cls")
 print()
 
@@ -73,7 +68,7 @@ class PivotPoints():
 
 
 class BaseStrategies(bt.Strategy):
-    lines = ('macd', 'signal', 'histo',)
+    lines = ('macd', 'signal', 'histo', 'k', 'd', 'mystoc',)
     params = (
         # Standard MACD Parameters
         ('macd1', 12),
@@ -83,6 +78,10 @@ class BaseStrategies(bt.Strategy):
         ('atrdist', 3.0),   # ATR distance for stop price
         ('smaperiod', 30),  # SMA Period (pretty standard)
         ('dirperiod', 10),  # Lookback period to consider SMA trend direction
+        ('k_period', 14), # lookback period for highest/lowest
+        ('d_period', 3), # smoothing period for d with the SMA
+    
+    
     )
 
     def log(self, txt, dt=None):
@@ -91,16 +90,14 @@ class BaseStrategies(bt.Strategy):
         print('%s, %s' % (dt.isoformat(), txt))
 
     def __init__(self):
-        # Keep a reference to the "close" line in the data[0] dataseries
-
-
-        # To keep track of pending orders and buy price/commission
         self.order         = None
         self.buyprice      = 0
         self.buycomm       = None
         self.price_to_sell = None
         self.total_buys    = 0
         self.total_sells   = 0
+        self.profitable_trades = 0
+        self.losing_trades     = 0
 
         self.dataclose = self.datas[0].close
         # print(self.datas[0].close[-1]) # third to the last entry
@@ -114,14 +111,23 @@ class BaseStrategies(bt.Strategy):
         
 
         # Indicators for the plotting show
-        self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
-        self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
+        # self.ema_red_line = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25) # Red
+        # self.wma_blue_line = bt.indicators.WeightedMovingAverage(self.datas[0], period=25)
 
-        
+
+        # declare the highest/lowest
+        highest = bt.ind.Highest(self.data, period=self.p.k_period)
+        lowest = bt.ind.Lowest(self.data, period=self.p.k_period)
+        # calculate and assign lines
+        self.k = k = (self.data - lowest) / (highest - lowest)
+        self.d = d = bt.ind.SMA(k, period=self.p.d_period)
+        self.mystoc = abs(k - k(-1)) / 2.0
+
         self.ema_long  = bt.indicators.ExponentialMovingAverage(self.datas[0], period=25)  
-        self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12) 
+        self.ema_short = bt.indicators.ExponentialMovingAverage(self.datas[0], period=12)
 
-        self.stochastic_slow = bt.indicators.StochasticSlow(self.datas[0])
+        self.stoc_slow = bt.indicators.StochasticSlow(self.datas[0])
+        self.stoc_fast = bt.indicators.StochasticFast(self.datas[0])
 
         self.macd = bt.indicators.MACD(self.data,
                                        period_me1=self.p.macd1,
@@ -179,15 +185,33 @@ class BaseStrategies(bt.Strategy):
 
         # self.log( 'OPERATION PROFIT, GROSS %.2f, NET %.2f' % (trade.pnl, trade.pnlcomm) )
 
-        # trade_per_accountValue = "$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2))
+        trade_per_accountValue = "$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2))
         # g_trade_per_account_list.append(trade_per_accountValue)
 
         # we profitted or lost
         if trade.pnl > 0:
-            g_profit_list.append(trade.pnl)
+            self.profitable_trades+=1
+            g_profit_list.append("$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2)))
         else:
-            g_loss_list.append(trade.pnl)
+            self.losing_trades+=1
+            g_loss_list.append("$" + str(round(trade.pnl, 1)) + " %" + str(100 * round(trade.pnl / self.broker.getvalue(), 2)))
 
+        
+    def print_trades(self):
+        global g_profit_list
+        global g_loss_list
+
+        print("profitable trades: ", self.profitable_trades)
+        print("losing trades:     ", self.losing_trades)
+
+        print("profitable trades:")
+        for i in g_profit_list:
+            print(i)
+
+        print()
+        print("losing trades:")
+        for i in g_loss_list:
+            print(i)
 
 
     # region [blue]
@@ -304,26 +328,25 @@ class BaseStrategies(bt.Strategy):
 
 
 
-    # region [blue]
-    def moving_averages(self):
-        # self.ema_red_line  # Red
-        # self.wma_blue_line # Blue
+    # # region [blue]
+    # def moving_averages(self):
+    #     # self.ema_red_line  # Red
+    #     # self.wma_blue_line # Blue
 
-        if not self.order:
-            if not self.position:
-                if self.wma_blue_line[0] > self.ema_red_line[0]:
-                    self.order         = self.buy()
-                    self.buyprice      = self.dataclose[0]
-            else:
-                if self.wma_blue_line[0] < self.ema_red_line[0]:
-                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
-    # end region
+    #     if not self.order:
+    #         if not self.position:
+    #             if self.wma_blue_line[0] > self.ema_red_line[0]:
+    #                 self.order         = self.buy()
+    #                 self.buyprice      = self.dataclose[0]
+    #         else:
+    #             if self.wma_blue_line[0] < self.ema_red_line[0]:
+    #                 self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
+    # # end region
 
 
 
     # region [blue]
     def exponential_averages(self):
-
         if not self.order:
             if not self.position:
                 if self.ema_short[0] > self.ema_long[0]:
@@ -334,41 +357,19 @@ class BaseStrategies(bt.Strategy):
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
     # end region
 
+ 
 
-
-
-    # # region [red]
-    # def next(self):
-    #     # self.buy_and_hold()
-    #     # self.macd_strategy()
-    #     # self.rsi_strategy()
-    #     # self.ppsr()
-    #     # self.hybrid_strategy()
-    #     # self.moving_averages()
-    #     # self.exponential_averages()
-    #     pass
-    # # end region
-
-
-
-    # def next(self, strategy_name):
-    #     if strategy_name == 'buy_and_hold':
-    #         self.buy_and_hold()
-    #     elif strategy_name == 'macd':
-    #         self.macd_strategy()
-    #     elif strategy_name == 'rsi':
-    #         self.rsi_strategy()
-    #     elif strategy_name == 'ppsr':
-    #         self.ppsr()
-    #     elif strategy_name == 'hybrid_strategy':
-    #         self.hybrid_strategy()
-    #     elif strategy_name == 'moving_averages':
-    #         self.moving_averages()
-    #     elif strategy_name == 'exponential_averages':
-    #         self.exponential_averages()
-    #     else:
-    #         print("invalid option")
-
+    # region [blue]
+    def stochastic_fast(self):
+        if not self.order:
+            if not self.position:
+                if self.k[0] > self.d[0] + (self.d[0] * 0.009):
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+            else:
+                if self.k[0] < self.d[0] + (self.d[0] * 0.1) :
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
+    # end region
 
 
 def get_total_backtested_years(filename):
@@ -400,8 +401,6 @@ def get_total_backtested_years(filename):
     return round(years_total, 1)
 
 
-
-
 def print_time_elapsed(start_time) -> None:
     end_time = time()
     total_time = end_time - start_time
@@ -409,77 +408,3 @@ def print_time_elapsed(start_time) -> None:
     minutes = int(total_time // 60) % 60
     hours = int(total_time // 3600) % 60
     print(f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n")
-
-
-
-def run_backtesting(filename):
-    # Create a cerebro entity
-    cerebro = bt.Cerebro()
-
-    # Add a strategy
-    cerebro.addstrategy(BaseStrategies)
-
-    # Datas are in a subfolder of the samples. Need to find where the script is
-    # because it could have been called from anywhere
-
-    
-    modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
-    datapath = os.path.join(modpath, filename)
-
-    start_year  = 2014
-    start_month = 3
-    start_day   = 15
-
-    end_year  = 2021
-    end_month = 3
-    end_day   = 19
-
-    # Create a Data Feed
-    data = bt.feeds.YahooFinanceCSVData(
-            dataname=datapath,
-            fromdate=datetime.datetime(start_year, start_month, start_day),
-            todate=datetime.datetime(end_year, end_month, end_day),
-            reverse=False)
-
-    # First add the original data - smaller timeframe
-    cerebro.adddata(data)
-
-    # Set our desired cash start
-    starting_cash = 1000.0
-    cerebro.broker.setcash(starting_cash)
-
-    # Add a FixedSize sizer according to the stake
-    cerebro.addsizer(bt.sizers.AllInSizer)
-
-    # Set the commission
-    # cerebro.broker.setcommission(commission=0.0)
-
-    binance_trade_fee = 0.00075
-    relative_trade_fee = cerebro.broker.getvalue() * binance_trade_fee
-    cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
-
-    # Run over everything
-    cerebro.run()
-
-    # percent_gained           = (cerebro.broker.getvalue() / starting_cash) * 10
-    # average_percent_per_year = percent_gained / get_total_backtested_years(filename)
-
-    # Print out the final result
-    print()
-    print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
-    print(Color.WARNING + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
-
-    # if cerebro.broker.getvalue() < starting_cash:
-    #     print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %-{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
-    #     print("Average Percent Per Year:    %-{:,.2f}".format(average_percent_per_year))
-    # else:
-    #     print(Color.OKGREEN + Color.BOLD + Color.UNDERLINE + "Total Percent gained:        %{:,.2f}".format(round(percent_gained, 3)) + Color.ENDC)
-    #     print("Average Percent Per Year:    %{:,.2f}".format(average_percent_per_year))
-    # print("Total Backtested Years:      " + str(get_total_backtested_years(filename)))
-
-    cerebro.plot()    
-
-
-if __name__ == '__main__':
-    filename = 'C:\\Users\\Rory Glenn\\Documents\\python_repos\\Stocks\\BackTesting\\BTC-USD.csv'
-    run_backtesting(filename)
