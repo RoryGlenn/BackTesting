@@ -18,9 +18,7 @@ class BitcoinStrategy(BaseStrategies):
 
     # region [blue]
     def macd_strategy(self):
-        # Check if an order is pending ... if yes, we cannot send a 2nd one
         if not self.order:
-            # Check if we are in the market
             if not self.position:
                 if self.macd_histogram[0] >= 0.10:
                     self.order    = self.buy()
@@ -28,6 +26,19 @@ class BitcoinStrategy(BaseStrategies):
                 if self.macd_histogram[0] < 0.10:
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
+    # end region
+
+
+    # region [blue]
+    def hybrid_strategy(self):
+        if not self.order:
+            if not self.position:
+                if self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * 0.009 or self.rsi < 29:
+                    self.order    = self.buy()
+                    self.buyprice = self.dataclose[0]
+            else:
+                if self.ema_short[0] < self.ema_long[0] + self.ema_long[0] * 0.009:
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
 
@@ -43,7 +54,9 @@ class BitcoinStrategy(BaseStrategies):
             self.moving_averages()
             self.exponential_averages()
         """
-        self.macd_strategy()
+
+        # self.buy_and_hold()
+        self.hybrid_strategy()
     # end region  
 
 
@@ -58,7 +71,7 @@ def run_backtesting(filename):
     modpath  = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, filename)
 
-    start_year  = 2014
+    start_year  = 2017
     start_month = 3
     start_day   = 15
 
@@ -73,7 +86,6 @@ def run_backtesting(filename):
             todate=datetime.datetime(end_year, end_month, end_day),
             reverse=False)
 
-    # First add the original data - smaller timeframe
     cerebro.adddata(data)
 
     # Set our desired cash start
@@ -93,7 +105,7 @@ def run_backtesting(filename):
     # Print out the final result
     print()
     print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
-    print(Color.WARNING + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
+    print(Color.OKGREEN + Color.UNDERLINE + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
 
     # plot the results
     cerebro.plot()    

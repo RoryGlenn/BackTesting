@@ -46,16 +46,16 @@ class EthereumStrategy(BaseStrategies):
     # end region
 
 
+
     # region [blue]
     def hybrid_strategy(self):
         if not self.order:
             if not self.position:
-                if self.ema_short[0] > self.ema_long[0] + (self.ema_long[0] * 0.004):
+                if self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * 0.004 or self.rsi < 21:
                     self.order    = self.buy()
                     self.buyprice = self.dataclose[0]
             else:
                 if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5:
-                # if self.ema_short[0] < self.ema_long[0] + (self.ema_long[0] * 0.004):
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
     # end region
 
@@ -74,8 +74,6 @@ class EthereumStrategy(BaseStrategies):
         """
 
         # self.buy_and_hold()
-        # self.macd_day_strategy()
-        # self.exponential_averages()
         self.hybrid_strategy()
     # end region  
 
@@ -106,7 +104,7 @@ def run_backtesting():
 
     data = bt.feeds.YahooFinanceCSVData(
             dataname="ETH-USD.csv",
-            fromdate=datetime.datetime(2015, 8, 7),
+            fromdate=datetime.datetime(2017, 8, 7),
             todate=datetime.datetime(2021, 3, 21),
             reverse=False)
 
