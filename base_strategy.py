@@ -336,33 +336,14 @@ class BaseStrategies(bt.Strategy):
         # %D = y-day SMA of %K
         """
 
-        # Get enough data points to calculate k and do it
-        d = self.data.get(size=self.p.k_period)
-        hi = max(d)
-        lo = min(d)
-        self.lines.k[0] = k0 = (self.data[0] - lo) / (hi - lo)
-       
-        # Get enough ks to calculate the SMA of k. Assign to d
-        last_ks = self.l.k.get(size=self.p.d_period)
-        self.lines.d[0] = sum(last_ks) / self.p.d_period
-        
-        # Now calculate mystoc
-        self.lines.mystoc[0] = abs(k0 - self.l.k[-1]) / 2.0
-
-        print('k:      ', self.lines.k[0])
-        print('d:      ', self.lines.d[0])
-        print('mystoc: ', self.lines.mystoc[0])
-        print()
-
         if not self.order:
             if not self.position:
-                if self.lines.k[0] > self.lines.d[0]:
-                    self.order         = self.buy()
-                    self.buyprice      = self.dataclose[0]
+                if self.stoc_fast.percK[0] > self.stoc_fast.percD[0] + (self.stoc_fast.percD[0] * 0.005):
+                    self.order    = self.buy()
+                    self.buyprice = self.dataclose[0]
             else:
-                if self.lines.k[0] < self.lines.d[0]:
-                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02) 
-
+                if self.stoc_fast.percK[0] < self.stoc_fast.percD[0] -  (self.stoc_fast.percD[0] * 0.005):
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
 
     def stochastic_slow(self):

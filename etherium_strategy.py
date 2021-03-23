@@ -75,8 +75,9 @@ class EthereumStrategy(BaseStrategies):
 
         # self.buy_and_hold()
         # self.hybrid_strategy()
+        # self.stochastic_slow()
         # self.stochastic_fast()
-        self.stochastic_slow()
+
     # end region
 
 
