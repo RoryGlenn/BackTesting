@@ -4,6 +4,7 @@ import backtrader as bt
 from os import system
 import pandas as pd
 from time import time
+from color import Color
 system("cls")
 print()
 
@@ -432,13 +433,16 @@ def get_total_backtested_years(filename):
     return round(years_total, 1)
 
 
-def print_time_elapsed(start_time) -> None:
+def print_time_elapsed(start_time, color='') -> None:
     end_time = time()
     total_time = end_time - start_time
     seconds = int(total_time) % 60
     minutes = int(total_time // 60) % 60
     hours = int(total_time // 3600) % 60
-    print(f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n")
+    if color != '':
+        print(color + f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n" + Color.ENDC)
+    else:
+        print(f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n")
 
 
 

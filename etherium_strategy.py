@@ -104,11 +104,22 @@ class EthereumStrategy(BaseStrategies):
                 # buying?
                 # not [( () == False ) and (on_or_off[] == True)]
 
-                # can we change  "on_or_off[0] == True" -> "on_or_off[0]" ?
+                """ 
+                Rory's Notes:
+                    1. Is it ok if we change  "on_or_off[0] == True" -> "on_or_off[0]" ?
 
-                # if not (True == False) and True -> True and True -> True
-                # if not True and True -> False
+                    2. Can we simplify this logic by removing any == False statements?
 
+                    3. Optimize for selling as well
+
+                    4. not (((self.ema_very_short[0] > self.ema_short[0]) is not part of the original hybrid_strategy()
+                    
+                    5. not (((self.macd_histogram[0] >= 0) is not part of the original hybrid_strategy()
+
+                    6. Once we are finished with the above tasks, can we set up the optimizer to run for
+                        every strat but also have it loop through every time period slice with every strat?
+                        I know this is a big task, so I'm not expecting it to be finished in one day.
+                """
 
                 if  not (((self.ema_very_short[0] > self.ema_short[0])                                                            == False) and (on_or_off[0] == True)) and \
                     not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * ema_line_clear)                              == False) and (on_or_off[1] == True)) and \
@@ -242,7 +253,7 @@ def run_optimizer():
     for i in optimized_list:
         print(i)
 
-    print_time_elapsed(start_time)    
+    print_time_elapsed(start_time, Color.OKGREEN + Color.UNDERLINE)    
 
 
 
