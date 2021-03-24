@@ -94,19 +94,27 @@ class EthereumStrategy(BaseStrategies):
     # TIMM ![(1 == F) and (2 == T)]
     def hybrid_strategy_optimizer(self):
         global on_or_off
-        
+        global rand_num
+
         ema_line_clear = rand_num[0]
-        rsi_thres      = rand_num[1]
+        rsi_threshold  = rand_num[1]
 
         if not self.order:
             if not self.position:
                 # buying?
                 # not [( () == False ) and (on_or_off[] == True)]
-                if  not (((self.ema_very_short[0] > self.ema_short[0])                                                   == False) and (on_or_off[0] == True)) and \
-                    not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * rsi_thres)                          == False) and (on_or_off[1] == True)) and \
-                    not (((self.rsi < rsi_thres)                                                                         == False) and (on_or_off[2] == True)) and \
-                    not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * rsi_thres or self.rsi < rsi_thres ) == False) and (on_or_off[3] == True)) and \
-                    not (((self.macd_histogram[0] >= 0)                                                                  == False) and (on_or_off[4] == True)) :
+
+                # can we change  "on_or_off[0] == True" -> "on_or_off[0]" ?
+
+                # if not (True == False) and True -> True and True -> True
+                # if not True and True -> False
+
+
+                if  not (((self.ema_very_short[0] > self.ema_short[0])                                                            == False) and (on_or_off[0] == True)) and \
+                    not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * ema_line_clear)                              == False) and (on_or_off[1] == True)) and \
+                    not (((self.rsi < rsi_threshold)                                                                              == False) and (on_or_off[2] == True)) and \
+                    not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * ema_line_clear or self.rsi < rsi_threshold ) == False) and (on_or_off[3] == True)) and \
+                    not (((self.macd_histogram[0] >= 0)                                                                           == False) and (on_or_off[4] == True)) :
                         self.order    = self.buy()
                         self.buyprice = self.dataclose[0]
             else:
@@ -188,59 +196,59 @@ def run_backtesting():
             
             reverse=False)
 
+    starting_cash = 1000.0
 
     cerebro.adddata(data)
-
-    # Set our desired cash start
-    starting_cash = 1000.0
     cerebro.broker.setcash(starting_cash)
-
-    # Add a FixedSize sizer according to the stake
     cerebro.addsizer(bt.sizers.AllInSizer)
 
     binance_fixed_trade_fee = 0.00075
     relative_trade_fee = cerebro.broker.getvalue() * binance_fixed_trade_fee
     cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
 
-    # Run over everything
-    # cerebro.run(runonce=False)
     cerebro.run()
 
-    # Print out the final result
-    #print()
-    #print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
-    #print(Color.OKGREEN + Color.UNDERLINE + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
     return cerebro.broker.getvalue()
-    # plot the results
+
     # cerebro.plot()    
 
 
 
-if __name__ == '__main__':
-    
+def run_optimizer():
+    global rand_num
+    global on_or_off
     start_time = time()
     
-    # (17*100)*20
-
+    # total run time =  17*100*20
+    optimized_list = list()
     max = 0
     for ema_line_clear in range(0, 21):
         print('*'*20, end='')
         print_time_elapsed(start_time)
 
         for rsi_thres in range(0, 101):
-            print('.'*20, end='')
-            print_time_elapsed(start_time)
-
             for i in range(17):
                 rand_num  = [ema_line_clear*.001, rsi_thres]
-                on_or_off = [int(i//16)%2,int(i//8)%2,int(i//4)%2,int(i//2)%2,int(i//1)%2]
+                on_or_off = [int(i//16)%2, int(i//8)%2 ,int(i//4)%2, int(i//2)%2, int(i//1)%2]
                 
                 number = run_backtesting()
 
                 if number > max:
                     print(on_or_off, rand_num)
                     print(str(number) + "\n")
+                    optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
                     max = number
 
-    print_time_elapsed(start_time)
+    for i in optimized_list:
+        print(i)
+
+    print_time_elapsed(start_time)    
+
+
+
+
+if __name__ == '__main__':
+    run_optimizer()
+    
+
                 

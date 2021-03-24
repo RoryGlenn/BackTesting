@@ -306,6 +306,43 @@ class BaseStrategies(bt.Strategy):
 
 
 
+    # TIMM ![(1 == F) and (2 == T)]
+    def hybrid_strategy_optimizer(self):
+        global on_or_off
+        global rand_num
+
+        ema_line_clear = rand_num[0]
+        rsi_threshold  = rand_num[1]
+
+        if not self.order:
+            if not self.position:
+                # buying?
+                # not [( () == False ) and (on_or_off[] == True)]
+
+                # can we change  "on_or_off[0] == True" -> "on_or_off[0]" ?
+
+                # if not (True == False) and True -> True and True -> True
+                # if not True and True -> False
+
+
+                if  not (((self.ema_very_short[0] > self.ema_short[0])                                                            == False) and (on_or_off[0] == True)) and \
+                    not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * ema_line_clear)                              == False) and (on_or_off[1] == True)) and \
+                    not (((self.rsi < rsi_threshold)                                                                              == False) and (on_or_off[2] == True)) and \
+                    not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * ema_line_clear or self.rsi < rsi_threshold ) == False) and (on_or_off[3] == True)) and \
+                    not (((self.macd_histogram[0] >= 0)                                                                           == False) and (on_or_off[4] == True)) :
+                        self.order    = self.buy()
+                        self.buyprice = self.dataclose[0]
+            else:
+                if self.macd_histogram[0] < -3.6 or \
+                   self.macd_histogram[0] > 5:
+                   self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+
+        self.prev_ema_short = self.ema_short[0]
+
+
+
+
+
     # region [blue]
     def buy_and_hold(self):
         if not self.position:
@@ -402,3 +439,101 @@ def print_time_elapsed(start_time) -> None:
     minutes = int(total_time // 60) % 60
     hours = int(total_time // 3600) % 60
     print(f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n")
+
+
+
+
+
+def run_backtesting():
+    # Create a cerebro entity
+    cerebro = bt.Cerebro()
+
+    # Add a strategy
+    cerebro.addstrategy(EthereumStrategy)
+
+    # data = bt.feeds.GenericCSVData(
+    #     timeframe=bt.TimeFrame.Days,
+    #     # compression=5,
+    #     dataname='ETH-USD.csv',
+    #     nullvalue=0,
+    #     dtformat=('%Y-%m-%d'),
+    #     datetime=0,
+    #     open=1,
+    #     high=2,
+    #     low=3,
+    #     close=4,
+    #     volume=6,
+    #     openinterest=-1
+    # )
+
+    data = bt.feeds.YahooFinanceCSVData(
+            dataname="data/ETH-USD.csv",
+
+            # normalized
+            fromdate=datetime.datetime(2017, 8, 7),
+            todate=datetime.datetime(2021, 3, 19),
+
+            # slice 1
+            # fromdate=datetime.datetime(2017, 5, 30),
+            # todate=datetime.datetime(2018, 5, 30),
+
+            # slice 2
+            # fromdate=datetime.datetime(2018, 5, 30),
+            # todate=datetime.datetime(2019, 5, 30),
+
+            # slice 3
+            # fromdate=datetime.datetime(2019, 5, 30),
+            # todate=datetime.datetime(2020, 5, 30),
+
+            # slice 4
+            # fromdate=datetime.datetime(2020, 5, 30),
+            # todate=datetime.datetime(2021, 5, 30),
+            
+            reverse=False)
+
+    starting_cash = 1000.0
+
+    cerebro.adddata(data)
+    cerebro.broker.setcash(starting_cash)
+    cerebro.addsizer(bt.sizers.AllInSizer)
+
+    binance_fixed_trade_fee = 0.00075
+    relative_trade_fee = cerebro.broker.getvalue() * binance_fixed_trade_fee
+    cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
+
+    cerebro.run()
+
+    return cerebro.broker.getvalue()
+
+
+
+
+def run_optimizer():
+    global rand_num
+    global on_or_off
+    start_time = time()
+    
+    # total run time =  17*100*20
+    optimized_list = list()
+    max = 0
+    for ema_line_clear in range(0, 21):
+        print('*'*20, end='')
+        print_time_elapsed(start_time)
+
+        for rsi_thres in range(0, 101):
+            for i in range(17):
+                rand_num  = [ema_line_clear*.001, rsi_thres]
+                on_or_off = [int(i//16)%2, int(i//8)%2 ,int(i//4)%2, int(i//2)%2, int(i//1)%2]
+                
+                number = run_backtesting()
+
+                if number > max:
+                    print(on_or_off, rand_num)
+                    print(str(number) + "\n")
+                    optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
+                    max = number
+
+    for i in optimized_list:
+        print(i)
+
+    print_time_elapsed(start_time) 
