@@ -233,14 +233,22 @@ def run_hybrid_optimizer():
 
     for ema_line_clear in range(0, 21):
         print('*'*20, end='')
-        print_time_elapsed(start_time)
+        print_time_elapsed(start_time, Color.WARNING)
+
         for rsi_thres in range(0, 101):
             print('r')
+            print_time_elapsed(start_time, Color.OKCYAN)
+            
             for lower_thres in range(200):
                 print('.')
-                for upper_thres in range(lower_thres, 200):
+                print_time_elapsed(start_time, Color.OKBLUE)
+
+                for upper_thres in range(lower_thres, 200): # <- takes 4 min and 2 seconds to execute 1 iteration
                     print("u")
+                    print_time_elapsed(start_time, Color.OKGREEN)
+
                     for trail_percent in range(190):
+
                         for i in range(2**3):
                             rand_num  = [ema_line_clear*.001, rsi_thres, (-10.0 + (.1 * lower_thres)), round((-10 + (.1 * upper_thres)), 2), round((.01 + (.001 * trail_percent)), 3)]
                             on_or_off = [int(i//4)%2, int(i//2)%2, int(i//1)%2]
