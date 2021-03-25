@@ -84,30 +84,19 @@ class EthereumStrategy(BaseStrategies):
         global on_or_off
         global rand_num
 
-        ema_line_clear       = rand_num[0]
-        rsi_threshold        = rand_num[1]
+        # ema_line_clear       = rand_num[0]
+        # rsi_threshold        = rand_num[1]
         
-        macd_lower_threshold = rand_num[2]
-        macd_upper_threshold = rand_num[3]
-        trail_percent        = rand_num[4]
+        macd_lower_threshold = rand_num[0]
+        macd_upper_threshold = rand_num[1]
+        trail_percent        = rand_num[2]
 
         if not self.order:
             if not self.position:
-                # buying?
+
                 # not [( () == False ) and (on_or_off[] == True)]
 
-                """ 
-                Rory's Notes:
-                    2. Can we simplify this logic by removing any == False statements?
-
-                    6. Once we are finished with the above tasks, can we set up the optimizer to run for
-                        every strat but also have it loop through every time period slice with every strat?
-                        I know this is a big task, so I'm not expecting it to be finished in one day.
-                """
-
-                #if not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * ema_line_clear)                              == False) and (on_or_off[1])) and \
-                    # not (((self.rsi < rsi_threshold)                                                                              == False) and (on_or_off[2])) and \
-                if not (((self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * ema_line_clear or self.rsi < rsi_threshold ) == False) and (on_or_off[0])): 
+                if self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * 0.04 or self.rsi < 21:
                         self.order    = self.buy()
                         self.buyprice = self.dataclose[0]
                 else:
@@ -121,8 +110,8 @@ class EthereumStrategy(BaseStrategies):
                     # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
 
                     # (macd_upper_threshold < self.macd_histogram[0] < macd_lower_threshold)
-                    if not (((self.macd_histogram[0] < macd_lower_threshold)                                                      == False ) and (on_or_off[1])) and \
-                       not (( self.macd_histogram[0] > macd_upper_threshold)                                                      == False ) and (on_or_off[2]):
+                    if not (((self.macd_histogram[0] < macd_lower_threshold)                            == False ) and (on_or_off[0])) and \
+                       not (( self.macd_histogram[0] > macd_upper_threshold)                            == False ) and (on_or_off[1]):
                        self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=trail_percent)
                        # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
 
@@ -163,10 +152,7 @@ def print_header():
 
 
 def run_backtesting():
-    # Create a cerebro entity
     cerebro = bt.Cerebro()
-
-    # Add a strategy
     cerebro.addstrategy(EthereumStrategy)
 
     data = bt.feeds.YahooFinanceCSVData(
@@ -194,21 +180,18 @@ def run_backtesting():
             
             reverse=False)
 
-    starting_cash = 1000.0
+    starting_cash           = 1000.0
+    binance_fixed_trade_fee = 0.00075
 
     cerebro.adddata(data)
     cerebro.broker.setcash(starting_cash)
     cerebro.addsizer(bt.sizers.AllInSizer)
 
-    binance_fixed_trade_fee = 0.00075
     relative_trade_fee = cerebro.broker.getvalue() * binance_fixed_trade_fee
     cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
-
     cerebro.run()
-
-    return cerebro.broker.getvalue()
-
     # cerebro.plot()    
+    return cerebro.broker.getvalue()
 
 
 
@@ -233,37 +216,40 @@ def run_hybrid_optimizer():
 
     # Run time = 339,360,000 minutes?
 
-    for ema_line_clear in range(0, 21):
-        print('*'*20, end='')
-        print_time_elapsed(start_time, Color.WARNING)
+    # for ema_line_clear in range(0, 21):
+    #     print('*'*20, end='')
+    #     print_time_elapsed(start_time, Color.WARNING)
 
-        for rsi_thres in range(0, 101):
-            print('r')
-            print_time_elapsed(start_time, Color.OKCYAN)
+    #     for rsi_thres in range(0, 101):
+    #         print('r')
+    #         print_time_elapsed(start_time, Color.OKCYAN)
             
-            for lower_thres in range(200):
-                print('.')
-                print_time_elapsed(start_time, Color.OKBLUE)
+    for lower_thres in range(0, 201):
+        print('B')
+        print_time_elapsed(start_time, Color.OKBLUE)
 
-                for upper_thres in range(lower_thres, 200): # <- takes 4 min and 2 seconds to execute 1 iteration
-                    print("u")
-                    print_time_elapsed(start_time, Color.OKGREEN)
+        for upper_thres in range(lower_thres, 201): # <- 2 min 5 sec per iteration
+            print("A")
+            print_time_elapsed(start_time, Color.OKGREEN)
 
-                    for trail_percent in range(190):
+            for trail_percent in range(0, 191): # <- 1 sec per iteration
 
-                        for i in range(2**3):
-                            rand_num  = [ema_line_clear*.001, rsi_thres, (-10.0 + (.1 * lower_thres)), round((-10 + (.1 * upper_thres)), 2), round((.01 + (.001 * trail_percent)), 3)]
-                            on_or_off = [int(i//4)%2, int(i//2)%2, int(i//1)%2]
-                            
-                            number = run_backtesting()
-                            
-                            if number > max:
-                                print("Found: ", end='')
-                                print_time_elapsed(start_time)
-                                print(on_or_off, rand_num)
-                                print(str(number) + "\n")
-                                optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                                max = number
+                for i in range(2**2):
+                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
+                                    round((-10 + (.1 * upper_thres)), 2), 
+                                    round((.01 + (.001 * trail_percent)), 3)]
+
+                    on_or_off = [int(i//2)%2, int(i//1)%2]
+                    
+                    number = run_backtesting()
+                    
+                    if number > max:
+                        print("Found: ", end='')
+                        print_time_elapsed(start_time)
+                        print(on_or_off, rand_num)
+                        print(str(number) + "\n")
+                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
+                        max = number
 
     print("optimized list:")
     for i in optimized_list:
