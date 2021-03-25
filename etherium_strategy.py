@@ -231,6 +231,8 @@ def run_hybrid_optimizer():
         # trail_percent        = rand_num[4]
 
 
+    # Run time = 339,360,000 minutes?
+
     for ema_line_clear in range(0, 21):
         print('*'*20, end='')
         print_time_elapsed(start_time, Color.WARNING)
@@ -253,10 +255,8 @@ def run_hybrid_optimizer():
                             rand_num  = [ema_line_clear*.001, rsi_thres, (-10.0 + (.1 * lower_thres)), round((-10 + (.1 * upper_thres)), 2), round((.01 + (.001 * trail_percent)), 3)]
                             on_or_off = [int(i//4)%2, int(i//2)%2, int(i//1)%2]
                             
-                            # print(rand_num)
-                            # print(on_or_off)
-
                             number = run_backtesting()
+                            
                             if number > max:
                                 print("Found: ", end='')
                                 print_time_elapsed(start_time)
