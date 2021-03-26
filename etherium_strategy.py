@@ -223,14 +223,25 @@ def run_hybrid_optimizer():
     #     for rsi_thres in range(0, 101):
     #         print('r')
     #         print_time_elapsed(start_time, Color.OKCYAN)
-            
-    for lower_thres in range(0, 20):
-        print_time_elapsed(start_time, Color.OKBLUE) # <- 4 minutes 18 seconds
 
-        for upper_thres in range(lower_thres, 20): # <- 13 seconds
+
+
+    # [0, 0] [-2.0, -2.0, 0.09]
+    # 4945.061043285241
+
+    # [0, 0] [-4.0, -4.0, 0.07]
+    # 4945.061043285241
+
+    # [0, 0] [8.0, 8.0, 0.19]
+    # 4945.061043285241    
+            
+    for lower_thres in range(180, 200): # og: 0 - 200
+        print_time_elapsed(start_time, Color.OKBLUE) 
+
+        for upper_thres in range(lower_thres, 200): # og: 0 - 200      
             print_time_elapsed(start_time, Color.OKGREEN)
 
-            for trail_percent in range(0, 20):
+            for trail_percent in range(180, 200): # og: 0 - 190
 
                 for i in range(2**2):
                     rand_num  = [ (-10.0 + (.1 * lower_thres)), 
