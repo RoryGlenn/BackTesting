@@ -440,9 +440,9 @@ def print_time_elapsed(start_time, color='') -> None:
     minutes = int(total_time // 60) % 60
     hours = int(total_time // 3600) % 60
     if color != '':
-        print(color + f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n" + Color.ENDC)
+        print(color + f"Time elapsed {hours} hours {minutes} minutes {seconds} seconds\n" + Color.ENDC)
     else:
-        print(f"Time elapsed {hours} hour {minutes} minutes {seconds} seconds\n")
+        print(f"Time elapsed {hours} hours {minutes} minutes {seconds} seconds\n")
 
 
 

@@ -110,8 +110,8 @@ class EthereumStrategy(BaseStrategies):
                     # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
 
                     # (macd_upper_threshold < self.macd_histogram[0] < macd_lower_threshold)
-                    if not (((self.macd_histogram[0] < macd_lower_threshold)                            == False ) and (on_or_off[0])) and \
-                       not (( self.macd_histogram[0] > macd_upper_threshold)                            == False ) and (on_or_off[1]):
+                    if not ((not (self.macd_histogram[0] < macd_lower_threshold) ) and (on_or_off[0])) and \
+                       not ( not (self.macd_histogram[0] > macd_upper_threshold) ) and (on_or_off[1]):
                        self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=trail_percent)
                        # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
 
@@ -224,15 +224,13 @@ def run_hybrid_optimizer():
     #         print('r')
     #         print_time_elapsed(start_time, Color.OKCYAN)
             
-    for lower_thres in range(0, 201):
-        print('B')
-        print_time_elapsed(start_time, Color.OKBLUE)
+    for lower_thres in range(0, 20):
+        print_time_elapsed(start_time, Color.OKBLUE) # <- 4 minutes 18 seconds
 
-        for upper_thres in range(lower_thres, 201): # <- 2 min 5 sec per iteration
-            print("A")
+        for upper_thres in range(lower_thres, 20): # <- 13 seconds
             print_time_elapsed(start_time, Color.OKGREEN)
 
-            for trail_percent in range(0, 191): # <- 1 sec per iteration
+            for trail_percent in range(0, 20):
 
                 for i in range(2**2):
                     rand_num  = [ (-10.0 + (.1 * lower_thres)), 
