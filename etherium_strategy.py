@@ -13,6 +13,8 @@ rand_num  = []
 histogram_set  = set()
 histogram_list = list()
 
+ema_short = 0
+ema_long  = 0
 
 
 class EthereumStrategy(BaseStrategies):
@@ -78,9 +80,15 @@ class EthereumStrategy(BaseStrategies):
     def hybrid_strategy_optimizer(self):
         global on_or_off
         global rand_num
+        global ema_short
+        global ema_long
 
         macd_lower_threshold = rand_num[0]
         macd_upper_threshold = rand_num[1]
+        
+        ema_short = self.ema_short
+        ema_long  = self.ema_long
+
 
         if not self.order:
             if not self.position:
@@ -181,6 +189,9 @@ def run_backtesting():
 def run_hybrid_optimizer():
     global rand_num
     global on_or_off
+    global ema_short
+    global ema_long
+
     start_time = time()
     optimized_list = list()
     max = 0
@@ -197,12 +208,14 @@ def run_hybrid_optimizer():
     # trail amount = 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
 
 
-    for lower_thres in range(0, 200): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
+    for lower_thres in range(0, 200):
+        
+        print_time_elapsed(start_time, Color.OKBLUE)
 
-        for upper_thres in range(lower_thres, 200): # og: 0 - 200      
+        for upper_thres in range(lower_thres, 200):
 
             for i in range(2**2):
+                
                 rand_num  = [ (-10.0 + (.1 * lower_thres)), round((-10 + (.1 * upper_thres)), 2) ]
                 on_or_off = [int(i//2)%2, int(i//1)%2]
                 number = run_backtesting()
@@ -212,9 +225,10 @@ def run_hybrid_optimizer():
                     print_time_elapsed(start_time)
                     print(on_or_off, rand_num)
                     print(str(number) + "\n")
-                    optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
+                    print("ema_short: ", ema_short)
+                    print("ema_long:  ", ema_long)
+                    optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n" + "ema_short: " + str(ema_short) + "\n" + "ema_long: " + str(ema_long) + "\n")
                     max = number
-
 
     print("FINAL----------")
     print_time_elapsed(start_time, Color.Red)
