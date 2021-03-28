@@ -4,25 +4,15 @@ import datetime
 import os
 from time import time
 from color import Color
-
+import talib as ta
 from base_strategy import BaseStrategies, print_time_elapsed
 
 
 on_or_off = []
 rand_num  = []
+histogram_set  = set()
+histogram_list = list()
 
-"""
-T T = T
-T F = T
-F T = F  ![(1 == F) and (2 == T)]
-F F = T
-
-T T = F
-T F = F
-F T = T
-F F = F
-
-"""
 
 
 class EthereumStrategy(BaseStrategies):
@@ -62,7 +52,10 @@ class EthereumStrategy(BaseStrategies):
     # region [blue]
     def hybrid_strategy(self):
 
-        current_price = self.dataclose[0]
+        # current_price = self.dataclose[0]
+        global histogram_list
+        
+        histogram_list.append(self.macd_histogram[0])
 
         if not self.order:
             if not self.position:
@@ -72,6 +65,8 @@ class EthereumStrategy(BaseStrategies):
                         self.buyprice = self.dataclose[0]
             else:
                 if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5:
+                    global histogram_set
+                    histogram_set.add(self.macd_histogram[0])
                     self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
         self.prev_ema_short = self.ema_short[0]
@@ -84,38 +79,18 @@ class EthereumStrategy(BaseStrategies):
         global on_or_off
         global rand_num
 
-        # ema_line_clear       = rand_num[0]
-        # rsi_threshold        = rand_num[1]
-        
         macd_lower_threshold = rand_num[0]
         macd_upper_threshold = rand_num[1]
-        trail_percent        = rand_num[2]
 
         if not self.order:
             if not self.position:
-
-                # not [( () == False ) and (on_or_off[] == True)]
-
                 if self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * 0.04 or self.rsi < 21:
                         self.order    = self.buy()
                         self.buyprice = self.dataclose[0]
                 else:
-                    #  LOWER_THRESHOLD (-3.6),                     HIGHER_THRESHOLD (5)
-                    # if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5:
-
-                    # lower_threshold: -10.0, -9.9, -9.8, ...  , upper_threshold
-                    # (-10.0 + (.1 * i)) (i < upper)
-
-                    # upper_threshold: 10.0, 9.9, 9.8, ... , lower_threshold
-                    # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
-
-                    # (macd_upper_threshold < self.macd_histogram[0] < macd_lower_threshold)
                     if not ((not (self.macd_histogram[0] < macd_lower_threshold) ) and (on_or_off[0])) and \
                        not ( not (self.macd_histogram[0] > macd_upper_threshold) ) and (on_or_off[1]):
-                       self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=trail_percent)
-                       # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
-
-        self.prev_ema_short = self.ema_short[0]
+                       self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
 
     # region [red]
@@ -137,8 +112,8 @@ class EthereumStrategy(BaseStrategies):
         # self.rsi_strategy()
         # self.ppsr()
         # self.exponential_averages()
-        # self.hybrid_strategy()
-        self.hybrid_strategy_optimizer()
+        self.hybrid_strategy()
+        # self.hybrid_strategy_optimizer()
     # end region
 
 
@@ -177,6 +152,10 @@ def run_backtesting():
             # slice 4
             # fromdate=datetime.datetime(2020, 5, 30),
             # todate=datetime.datetime(2021, 5, 30),
+
+            # test slice
+            # fromdate=datetime.datetime(2021, 1, 1),
+            # todate=datetime.datetime(2021, 3, 27),
             
             reverse=False)
 
@@ -190,7 +169,11 @@ def run_backtesting():
     relative_trade_fee = cerebro.broker.getvalue() * binance_fixed_trade_fee
     cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
     cerebro.run()
-    # cerebro.plot()    
+    # histogram_list = sorted(histogram_set)
+
+
+
+    # cerebro.plot()
     return cerebro.broker.getvalue()
 
 
@@ -199,292 +182,38 @@ def run_hybrid_optimizer():
     global rand_num
     global on_or_off
     start_time = time()
-    
-    # total run time =  17*100*20
     optimized_list = list()
     max = 0
 
-    # lower_threshold: -10.0, -9.9, -9.8, ...  , 10
+    #  LOWER_THRESHOLD (-3.6),                     HIGHER_THRESHOLD (5)
+    # if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5:
+
+    # lower_threshold: -10.0, -9.9, -9.8, ...  , upper_threshold
     # (-10.0 + (.1 * i)) (i < upper)
 
     # upper_threshold: 10.0, 9.9, 9.8, ... , lower_threshold
-    # trail_percent: 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
-        # macd_lower_threshold = rand_num[2]
-        # macd_upper_threshold = rand_num[3]
-        # trail_percent        = rand_num[4]
+    # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
+        
+    # trail amount = 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
 
 
-    # Run time = 339,360,000 minutes?
-
-    # for ema_line_clear in range(0, 21):
-    #     print('*'*20, end='')
-    #     print_time_elapsed(start_time, Color.WARNING)
-
-    #     for rsi_thres in range(0, 101):
-    #         print('r')
-    #         print_time_elapsed(start_time, Color.OKCYAN)
-
-
-
-    for lower_thres in range(0, 20): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 20): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(0, 20): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(20, 40): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 40): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(20, 40): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(40, 60): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 60): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(40, 60): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(60, 80): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 80): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(60, 80): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(80, 100): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 100): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(80, 100): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(100, 120): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 120): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(100, 120): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(120, 140): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 140): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(120, 140): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-
-    for lower_thres in range(140, 160): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 160): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(140, 160): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(160, 180): # og: 0 - 200
-        print_time_elapsed(start_time, Color.OKBLUE) 
-
-        for upper_thres in range(lower_thres, 180): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
-
-            for trail_percent in range(160, 180): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
-
-
-    for lower_thres in range(180, 200): # og: 0 - 200
+    for lower_thres in range(0, 200): # og: 0 - 200
         print_time_elapsed(start_time, Color.OKBLUE) 
 
         for upper_thres in range(lower_thres, 200): # og: 0 - 200      
-            print_time_elapsed(start_time, Color.OKGREEN)
 
-            for trail_percent in range(180, 200): # og: 0 - 190
-
-                for i in range(2**2):
-                    rand_num  = [ (-10.0 + (.1 * lower_thres)), 
-                                    round((-10 + (.1 * upper_thres)), 2), 
-                                    round((.01 + (.001 * trail_percent)), 3)]
-
-                    on_or_off = [int(i//2)%2, int(i//1)%2]
-                    
-                    number = run_backtesting()
-                    
-                    if number > max:
-                        print("Found: ", end='')
-                        print_time_elapsed(start_time)
-                        print(on_or_off, rand_num)
-                        print(str(number) + "\n")
-                        optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
-                        max = number
+            for i in range(2**2):
+                rand_num  = [ (-10.0 + (.1 * lower_thres)), round((-10 + (.1 * upper_thres)), 2) ]
+                on_or_off = [int(i//2)%2, int(i//1)%2]
+                number = run_backtesting()
+                
+                if number > max:
+                    print("Found: ", end='')
+                    print_time_elapsed(start_time)
+                    print(on_or_off, rand_num)
+                    print(str(number) + "\n")
+                    optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n")
+                    max = number
 
 
     print("FINAL----------")
@@ -497,3 +226,4 @@ def run_hybrid_optimizer():
 if __name__ == '__main__':
     print_header()
     run_hybrid_optimizer()
+    # run_backtesting()
