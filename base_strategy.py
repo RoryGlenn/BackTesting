@@ -520,12 +520,12 @@ def run_optimizer():
     # total run time =  17*100*20
     optimized_list = list()
     max = 0
-    for ema_line_clear in range(0, 21):
+    for ema_line_clear in range(0, 20):
         print('*'*20, end='')
         print_time_elapsed(start_time)
 
-        for rsi_thres in range(0, 101):
-            for i in range(17):
+        for rsi_thres in range(0, 100):
+            for i in range(16):
                 rand_num  = [ema_line_clear*.001, rsi_thres]
                 on_or_off = [int(i//16)%2, int(i//8)%2 ,int(i//4)%2, int(i//2)%2, int(i//1)%2]
                 

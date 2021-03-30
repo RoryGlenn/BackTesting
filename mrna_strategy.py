@@ -25,6 +25,24 @@ class EthereumStrategy(BaseStrategies):
 
 
     # region [blue]
+    def rsi_strategy(self):
+        # Simply log the closing price of the series from the reference
+
+        current_price = self.dataclose[0]
+
+        if not self.order:
+            if not self.position:
+                if self.rsi <= 35:
+                    self.order         = self.buy()
+                    self.buyprice      = self.dataclose[0]
+                    self.price_to_sell = self.buyprice + (self.buyprice * 0.05)
+            else:
+                if self.rsi >= 65:
+                    self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
+    # end region
+
+
+    # region [blue]
     def macd_day_strategy(self):
         if not self.order:
             if not self.position:
@@ -76,29 +94,7 @@ class EthereumStrategy(BaseStrategies):
 
 
 
-    # TIMM ![(1 == F) and (2 == T)]
-    def hybrid_strategy_optimizer(self):
-        global on_or_off
-        global rand_num
-        global ema_short
-        global ema_long
 
-        macd_lower_threshold = rand_num[0]
-        macd_upper_threshold = rand_num[1]
-        
-        ema_short = self.ema_short
-        ema_long  = self.ema_long
-
-
-        if not self.order:
-            if not self.position:
-                if self.ema_short[0] > self.ema_long[0] + self.ema_long[0] * 0.04 or self.rsi < 21:
-                        self.order    = self.buy()
-                        self.buyprice = self.dataclose[0]
-                else:
-                    if not ((not (self.macd_histogram[0] < macd_lower_threshold) ) and (on_or_off[0])) and \
-                       not ( not (self.macd_histogram[0] > macd_upper_threshold) ) and (on_or_off[1]):
-                       self.order = self.sell(exectype=bt.Order.StopTrail, trailamount=0.02)
 
 
     # region [red]
@@ -118,7 +114,6 @@ class EthereumStrategy(BaseStrategies):
         # self.buy_and_hold()
         # self.macd_strategy()
         # self.rsi_strategy()
-        # self.ppsr()
         # self.exponential_averages()
         self.hybrid_strategy()
         # self.hybrid_strategy_optimizer()
@@ -139,7 +134,7 @@ def run_backtesting():
     cerebro.addstrategy(EthereumStrategy)
 
     data = bt.feeds.YahooFinanceCSVData(
-            dataname="data/ETH-USD.csv",
+            dataname="data/MRNA.csv",
 
             # Everything
             # fromdate=datetime.datetime(2015, 8, 7),
@@ -171,7 +166,7 @@ def run_backtesting():
             
             reverse=False)
 
-    starting_cash           = 1
+    starting_cash           = 1000.0
     binance_fixed_trade_fee = 0.00075
 
     cerebro.adddata(data)
@@ -181,67 +176,20 @@ def run_backtesting():
     relative_trade_fee = cerebro.broker.getvalue() * binance_fixed_trade_fee
     cerebro.broker.setcommission(commission=relative_trade_fee, margin=True)    
     cerebro.run()
-    # histogram_list = sorted(histogram_set)
 
 
+    # Print out the final result
+    print()
+    print(Color.WARNING + "Starting Portfolio Value:    ${:,.2f}".format(starting_cash) + Color.ENDC)
+    print(Color.OKGREEN + Color.UNDERLINE + 'Final Portfolio Value:       ${:,.2f}'.format(cerebro.broker.getvalue()) + Color.ENDC)
 
     cerebro.plot()
-    return cerebro.broker.getvalue()
 
 
 
-def run_hybrid_optimizer():
-    global rand_num
-    global on_or_off
-    global ema_short
-    global ema_long
-
-    start_time = time()
-    optimized_list = list()
-    max = 0
-
-    #  LOWER_THRESHOLD (-3.6),                     HIGHER_THRESHOLD (5)
-    # if self.macd_histogram[0] < -3.6 or self.macd_histogram[0] > 5:
-
-    # lower_threshold: -10.0, -9.9, -9.8, ...  , upper_threshold
-    # (-10.0 + (.1 * i)) (i < upper)
-
-    # upper_threshold: 10.0, 9.9, 9.8, ... , lower_threshold
-    # 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
-        
-    # trail amount = 0.010, 0.011, 0.012, ... , 0.20 (190) (.01 + (.001 * i))
-
-
-    for lower_thres in range(0, 200):
-        
-        print_time_elapsed(start_time, Color.OKBLUE)
-
-        for upper_thres in range(lower_thres, 200):
-
-            for i in range(2**2):
-                
-                rand_num  = [ (-10.0 + (.1 * lower_thres)), round((-10 + (.1 * upper_thres)), 2) ]
-                on_or_off = [int(i//2)%2, int(i//1)%2]
-                number = run_backtesting()
-                
-                if number > max:
-                    print("Found: ", end='')
-                    print_time_elapsed(start_time)
-                    print(on_or_off, rand_num)
-                    print(str(number) + "\n")
-                    print("ema_short: ", ema_short)
-                    print("ema_long:  ", ema_long)
-                    optimized_list.append(str(on_or_off) + str(rand_num) + "\n" + str(number) + "\n" + "ema_short: " + str(ema_short) + "\n" + "ema_long: " + str(ema_long) + "\n")
-                    max = number
-
-    print("FINAL----------")
-    print_time_elapsed(start_time, Color.Red)
-    for i in optimized_list:
-        print(i) 
 
 
 
 if __name__ == '__main__':
     print_header()
-    # run_hybrid_optimizer()
     run_backtesting()
